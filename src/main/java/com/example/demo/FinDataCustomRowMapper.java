@@ -2,6 +2,9 @@ package com.example.demo;
 
 import org.springframework.batch.extensions.excel.RowMapper;
 import org.springframework.batch.extensions.excel.support.rowset.RowSet;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class FinDataCustomRowMapper implements RowMapper<MyDataObject> {
 
@@ -15,10 +18,22 @@ public class FinDataCustomRowMapper implements RowMapper<MyDataObject> {
             rs.next();
         }
 
+        String rowString = rs.getCurrentRow()[2];
+        SimpleDateFormat inputFormat = new SimpleDateFormat("MMddyyyy");
+        SimpleDateFormat outputFormat = new SimpleDateFormat("MM-dd-yyyy");
+        String formattedDateString = "";
+        try {
+            Date date = inputFormat.parse(rowString);
+            formattedDateString = outputFormat.format(date);
+            System.out.println(formattedDateString);
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+
         MyDataObject dataObject = new MyDataObject();
         dataObject.setFin(rs.getCurrentRow()[0]);
         dataObject.setCin(rs.getCurrentRow()[1]);
-        dataObject.setDateEntered(rs.getCurrentRow()[2]);
+        dataObject.setDateEntered(formattedDateString);
         dataObject.setNdc(rs.getCurrentRow()[3]);
         return dataObject;
         
