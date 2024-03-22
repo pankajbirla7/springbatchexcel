@@ -66,7 +66,7 @@ public class BatchConfiguration {
     public Step step1(ItemReader<MyDataObject> reader, ItemWriter<MyDataObject> writer) {
         return new StepBuilder("step1", jobRepository)
                 .<MyDataObject, MyDataObject>chunk(10)
-                .reader(reader)
+                .reader(new ExcelItemReader())
                 .writer(writer)
                 .transactionManager(transactionManager)
                 .build();
