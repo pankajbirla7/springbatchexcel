@@ -1,4 +1,4 @@
-	package com.example.demo;
+package com.example.demo;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -24,7 +24,7 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 	public ExcelItemReader() {
 		FileInputStream file = null;
 		try {
-			file = new FileInputStream(new File("C:\\Users\\acer\\Downloads\\test.xlsx"));
+			file = new FileInputStream(new File("C:\\Users\\acer\\Documents\\test_new.xlsx"));
 			XSSFWorkbook workbook = new XSSFWorkbook(file);
 
 			XSSFSheet sheet = workbook.getSheetAt(0);
@@ -46,10 +46,17 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 			Map<String, String> rowMap = new HashMap<>();
 			while (cellIterator.hasNext()) {
 				Cell cell = cellIterator.next();
+				if(colCount>=3) {
+					break;
+				}
 				colCount++;
+				if(cell.getCellType() == CellType.NUMERIC || cell.getCellType() == CellType.STRING) {
+					cell.setCellType(CellType.STRING);
+				}
+				
 				switch (cell.getCellType()) {
 				case NUMERIC:
-					int intValue = (int) cell.getNumericCellValue();
+					String intValue = cell.getNumericCellValue()+"";
 					System.out.print(intValue + "                 ");
 					rowMap.put(colCount + "", intValue + "");
 					break;
@@ -60,7 +67,7 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 					break;
 				}
 			}
-			System.out.println();
+			
 			if (!firstRowSkipped) {
 				firstRowSkipped = true;
 			}
@@ -75,7 +82,7 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 		        try {
 		            Date date = inputFormat.parse(rowString);
 		            formattedDateString = outputFormat.format(date);
-		            System.out.println(formattedDateString);
+		            System.out.print(formattedDateString);
 		        } catch (ParseException e) {
 		            e.printStackTrace();
 		        }
@@ -83,57 +90,7 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 			}else {
 				return null;
 			}
-			return dataObject;
-		}
-		return null;
-	}
-
-	// @Override
-	public MyDataObject readss() {
-		if (rowIterator != null && rowIterator.hasNext()) {
-			if (!firstRowSkipped) {
-				// Skip the first row
-				firstRowSkipped = true;
-				rowIterator.hasNext();
-			}
-			Row rs = rowIterator.next();
-
-			MyDataObject dataObject = new MyDataObject();
-			Cell finCell = rs.getCell(0);
-			if (finCell.getCellType() == CellType.NUMERIC) {
-				dataObject.setFin(finCell.getNumericCellValue() + "");
-			} else if (finCell.getCellType().equals(CellType.STRING)) {
-				dataObject.setFin(finCell.getStringCellValue());
-			}
-
-			Cell cinCell = rs.getCell(1);
-			if (cinCell.getCellType() == CellType.NUMERIC) {
-				dataObject.setCin(cinCell.getNumericCellValue() + "");
-			} else if (finCell.getCellType().equals(CellType.STRING)) {
-				dataObject.setCin(cinCell.getStringCellValue());
-			}
-
-			Cell ndcCell = rs.getCell(3);
-			if (ndcCell.getCellType() == CellType.NUMERIC) {
-				dataObject.setNdc(ndcCell.getNumericCellValue() + "");
-			} else if (finCell.getCellType().equals(CellType.STRING)) {
-				dataObject.setCin(cinCell.getStringCellValue());
-			}
-
-			Cell dateCell = rs.getCell(2);
-			String rowString = dateCell.getStringCellValue();
-			SimpleDateFormat inputFormat = new SimpleDateFormat("MMddyyyy");
-			SimpleDateFormat outputFormat = new SimpleDateFormat("MM-dd-yyyy");
-			String formattedDateString = "";
-			try {
-				Date date = inputFormat.parse(rowString);
-				formattedDateString = outputFormat.format(date);
-				System.out.println(formattedDateString);
-			} catch (ParseException e) {
-				e.printStackTrace();
-			}
-			dataObject.setDateEntered(formattedDateString);
-
+			System.out.println();
 			return dataObject;
 		}
 		return null;
