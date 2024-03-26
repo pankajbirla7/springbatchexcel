@@ -1,5 +1,7 @@
 package com.example.demo;
 
+import java.sql.Date;
+
 public class MyDataObject {
 
 	private Long id;
@@ -10,7 +12,9 @@ public class MyDataObject {
 	
 	private String ndc;
 	
-	private String dateEntered;
+	private Date dateEntered;
+	
+	private String dfilled;
 
 
 	public Long getId() {
@@ -45,11 +49,22 @@ public class MyDataObject {
 		this.ndc = ndc;
 	}
 
-	public String getDateEntered() {
+	public Date getDateEntered() {
 		return dateEntered;
 	}
 
-	public void setDateEntered(String dateEntered) {
+	public void setDateEntered(Date dateEntered) {
 		this.dateEntered = dateEntered;
 	}
+	
+
+	public String getDfilled() {
+		return dfilled;
+	}
+
+	public void setDfilled(String dfilled) {
+		this.dfilled = dfilled;
+	}
+
+
 }
