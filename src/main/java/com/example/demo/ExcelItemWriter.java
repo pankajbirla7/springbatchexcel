@@ -22,7 +22,7 @@ public class ExcelItemWriter implements ItemWriter<MyDataObject> {
 				if(item.getFin()!=null) {
 					System.out.println("Writing item: " + item);
 					String sql = "INSERT INTO Raw_Claims (FIN, CIN, dfilled, NDC, DateEntered) VALUES (?, ?, ?, ?, CURRENT_DATE())";
-					jdbcTemplate.update(sql, item.getFin(), item.getCin(), item.getDateEntered(), item.getNdc());
+					jdbcTemplate.update(sql, item.getFin(), item.getCin(), jdbcTemplate.update(sql, item.getFin(), item.getCin(), item.getDfilled(), item.getNdc());, item.getNdc());
 				}else {
 					continue;
 				}
