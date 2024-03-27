@@ -20,7 +20,12 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemReader;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.core.io.support.ResourcePatternResolver;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 public class ExcelItemReader implements ItemReader<MyDataObject> {
@@ -32,13 +37,21 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 	private Resource[] resources = null;
 	private ExcelItemWriter itemWriter;
 	private FileDetailsWriter fileDetailsWriter;
-	private String outputFileDirectory;
 	private final JdbcTemplate jdbcTemplate;
+	
+	@Value("${input.file.paths}")
+	private String inputFiles;
 
-	public ExcelItemReader(Resource[] resources, ExcelItemWriter excelItemWriter, FileDetailsWriter fileDetailsWriter, String outputFileDirectory, DataSource dataSource) {
+	@Value("${output.file.path}")
+	private String outputFileDirectory;
+	
+
+	@Autowired
+	private DataSource dataSource;
+
+	public ExcelItemReader(ExcelItemWriter excelItemWriter, FileDetailsWriter fileDetailsWriter, DataSource dataSource) {
 		try {
 			 this.resourceIndex = 0;
-		     this.resources = resources;
 		     this.itemWriter = excelItemWriter;
 		     this.fileDetailsWriter = fileDetailsWriter;
 		     this.outputFileDirectory = outputFileDirectory;
@@ -47,6 +60,17 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 		} catch (Exception e) {
 			throw new RuntimeException("Error opening Excel file", e);
 		}
+	}
+	
+	public Resource[] inputFiles() {
+		try {
+			ResourcePatternResolver resourcePatternResolver = new PathMatchingResourcePatternResolver();
+			Resource[] resources = resourcePatternResolver.getResources("file:" + inputFiles + "/*.xlsx");
+			return resources;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
 	
 	private void openWorkbook() {
@@ -68,6 +92,7 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 	
 	@Override
 	public MyDataObject read() {
+		resources = inputFiles();
 		for(Resource resource : resources) {
 			try (InputStream inputStream = resource.getInputStream()) {
 				this.workbook = new XSSFWorkbook(inputStream);
@@ -128,10 +153,6 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 				dataObject.setDfilled(rowMap.get(2 + ""));
 				dataObject.setNdc(rowMap.get(3 + ""));
 				
-				//dataObject.setDateEntered(CURRENT_DATE());
-				
-				java.sql.Date d = java.sql.Date.valueOf("2024-03-26");
-				
 				items.add(dataObject);
 			}
 			
@@ -144,7 +165,7 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 				FileDetails fileDetails = new FileDetails();
 				fileDetails.setAgencyFin(items.get(0).getFin());
 				fileDetails.setFileName(resource.getFilename());
-				fileDetails.setSubmittedByEmail("abc");
+				fileDetails.setSubmittedByEmail("abc@gmail.com");
 				java.sql.Date d = java.sql.Date.valueOf("2024-03-26");
 				fileDetails.setSubmitDate(d);
 				fileDetailsList.add(fileDetails);
