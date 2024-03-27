@@ -36,11 +36,11 @@ public class BatchConfiguration {
 //    @Autowired
 //    private Step moveFileStep;
 //    
-	@Value("${input.file.paths}")
-	private String inputFiles;
-
-	@Value("${output.file.path}")
-	private String outputFileDirectory;
+//	@Value("${input.file.paths}")
+//	private String inputFiles;
+//
+//	@Value("${output.file.path}")
+//	private String outputFileDirectory;
 
 	// @Bean
 //	public ExcelItemReader excelItemReader() {
@@ -57,38 +57,16 @@ public class BatchConfiguration {
 		return new FileDetailsWriter(dataSource);
 	}
 	
-//	@Bean
-//	public ExcelItemWriter agencyDetails() {
-//		return new ExcelItemWriter(dataSource);
-//	}
-
-//	@Bean
-//	public JobExecutionListener listener() {
-//		return new JobCompletionNotificationListener(outputFile);
-//	}
-
 	@Bean
-	public Resource[] inputFiles() {
-		try {
-			ResourcePatternResolver resourcePatternResolver = new PathMatchingResourcePatternResolver();
-			Resource[] resources = resourcePatternResolver.getResources("file:" + inputFiles + "/*.xlsx");
-			return resources;
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return null;
-	}
-	
-	@Bean
-    public ExcelItemReader customExcelItemReader(Resource[] resources) {
-        return new ExcelItemReader(resources, excelItemWriter(), fileDetails(), outputFileDirectory, dataSource);
+    public ExcelItemReader customExcelItemReader() {
+        return new ExcelItemReader(excelItemWriter(), fileDetails(), dataSource);
     }
 
 	@Bean
 	public Step step1(ItemReader<MyDataObject> reader, ItemWriter<MyDataObject> writer) {
 		return new StepBuilder("step1", jobRepository)
 				.<MyDataObject, MyDataObject>chunk(100000)
-				.reader(customExcelItemReader(inputFiles()))
+				.reader(customExcelItemReader())
 				.writer(excelItemWriter())
 				.transactionManager(transactionManager)
 				.build();
