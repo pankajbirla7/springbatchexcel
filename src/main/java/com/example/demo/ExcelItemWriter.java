@@ -21,8 +21,8 @@ public class ExcelItemWriter implements ItemWriter<MyDataObject> {
 			for (MyDataObject item : chunk.getItems()) {
 				if(item.getFin()!=null) {
 					System.out.println("Writing item: " + item);
-					String sql = "INSERT INTO Raw_Claims (FIN, CIN, dfilled, NDC, DateEntered) VALUES (?, ?, ?, ?, CURRENT_DATE())";
-					jdbcTemplate.update(sql, item.getFin(), item.getCin(), item.getDfilled(), item.getNdc());
+					String sql = "INSERT INTO Raw_Claims (FIN, CIN, dfilled, NDC, File_id, status_cd, DateEntered) VALUES (?, ?, ?, ?, ?, ?, CURRENT_DATE())";
+					jdbcTemplate.update(sql, item.getFin(), item.getCin(), item.getDfilled(), item.getNdc(), item.getFileId(), item.getStatusCode());
 				}else {
 					continue;
 				}

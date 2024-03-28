@@ -38,6 +38,7 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 	private ExcelItemWriter itemWriter;
 	private FileDetailsWriter fileDetailsWriter;
 	private final JdbcTemplate jdbcTemplate;
+	private Map<String, Integer> rowStatusMap = null;
 	
 	@Value("${input.file.paths}")
 	private String inputFiles;
@@ -56,6 +57,7 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 		     this.fileDetailsWriter = fileDetailsWriter;
 		     this.outputFileDirectory = outputFileDirectory;
 		     this.jdbcTemplate = new JdbcTemplate(dataSource);
+		     rowStatusMap = getRawStatusMap();
 		   //  openWorkbook();
 		} catch (Exception e) {
 			throw new RuntimeException("Error opening Excel file", e);
@@ -109,8 +111,9 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 		return null;
 	}
 		
-	private void processFile(Iterator<Row> rowIterator, Resource resource) {
+	private void processFile(Iterator<Row> rowIterator, Resource resource) throws Exception {
 		List<MyDataObject> items = new ArrayList<>();
+		int fileId = 0;
 		while (rowIterator != null && rowIterator.hasNext()) {
 			MyDataObject dataObject = new MyDataObject();
 			Row row = rowIterator.next();
@@ -152,6 +155,11 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 				dataObject.setCin(rowMap.get(1 + ""));
 				dataObject.setDfilled(rowMap.get(2 + ""));
 				dataObject.setNdc(rowMap.get(3 + ""));
+				dataObject.setStatusCode(rowStatusMap.get("New"));
+				if(fileId == 0) {
+					fileId = insertFileDetail(resource, dataObject.getFin());
+				}
+				dataObject.setFileId(fileId);
 				
 				items.add(dataObject);
 			}
@@ -161,17 +169,6 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 		
 		if(items!=null && items.size()>0) {
 			try {
-				List<FileDetails> fileDetailsList = new ArrayList<>();
-				FileDetails fileDetails = new FileDetails();
-				fileDetails.setAgencyFin(items.get(0).getFin());
-				fileDetails.setFileName(resource.getFilename());
-				fileDetails.setSubmittedByEmail("abc@gmail.com");
-				java.sql.Date d = java.sql.Date.valueOf("2024-03-26");
-				fileDetails.setSubmitDate(d);
-				fileDetailsList.add(fileDetails);
-				
-				Chunk<FileDetails> fileDetailsChunk = new Chunk<>(fileDetailsList);
-				fileDetailsWriter.write(fileDetailsChunk);
 						
 				Chunk<MyDataObject> fileWriterChunk = new Chunk<>(items);
 				itemWriter.write(fileWriterChunk);
@@ -181,6 +178,22 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 				e.printStackTrace();
 			}
 		}
+	}
+
+	private int insertFileDetail(Resource resource, String agencyFein) throws Exception {
+		List<FileDetails> fileDetailsList = new ArrayList<>();
+		FileDetails fileDetails = new FileDetails();
+		fileDetails.setAgencyFin(agencyFein);
+		fileDetails.setFileName(resource.getFilename());
+		fileDetails.setSubmittedByEmail("abc@gmail.com");
+		java.sql.Date d = java.sql.Date.valueOf("2024-03-26");
+		fileDetails.setSubmitDate(d);
+		fileDetailsList.add(fileDetails);
+		
+		Chunk<FileDetails> fileDetailsChunk = new Chunk<>(fileDetailsList);
+		int fileId = fileDetailsWriter.write(fileDetailsChunk);
+		
+		return fileId;
 	}
 
 	private void moveFilesToArchiveFolder(String fin, Resource resource) {
@@ -194,6 +207,10 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 
 	            // Define destination folder path
 	            Path destinationFolder = Paths.get(outputFileDirectory+"\\"+agencyName+" - "+fin);
+	            
+	            if(!Files.exists(destinationFolder)) {
+	            	Files.createDirectories(destinationFolder);
+	            }
 
 	            // Define destination file path
 	            Path destination = destinationFolder.resolve(source.getFileName());
@@ -222,6 +239,33 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 		
 		return null;
 	}
+	
+	private int getRawStatusCodeByStatus(String status) {
+		try {
+			String sql = "SELECT * from raw_status where Description = ?";
+			return jdbcTemplate.queryForObject(sql, new Object[] { status },
+					(rs, rowNum) -> rs.getInt("Code"));
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		return 0;
+	}
+	
+	public Map<String, Integer> getRawStatusMap() {
+        String sql = "SELECT Code, Description FROM raw_status";
+        
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql);
+        
+        Map<String, Integer> statusMap = new HashMap<>();
+        for (Map<String, Object> row : rows) {
+            int code = (Integer) row.get("Code");
+            String status = (String) row.get("Description");
+            statusMap.put(status, code);
+        }
+        
+        return statusMap;
+    }
 
 	private boolean isRowEmpty(Row row) {
         if (row == null) {
