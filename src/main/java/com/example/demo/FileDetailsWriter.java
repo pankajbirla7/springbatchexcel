@@ -57,7 +57,11 @@ public class FileDetailsWriter {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			EmailUtility.sendEmail("File writing to DB failed", Constant.FAILED);
+			try {
+				EmailUtility.sendEmail("File writing to DB failed", Constant.FAILED);
+			}catch(Exception ex) {
+				ex.printStackTrace();
+			}
 			return 0;
 		}
 		return 0;
