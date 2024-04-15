@@ -105,6 +105,7 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 				
 				closeWorkbook();
 			} catch (Exception e) {
+				EmailUtility.sendEmail("File processing failed", Constant.FAILED);
 				throw new RuntimeException("Error opening Excel file", e);
 			}
 		}
@@ -175,9 +176,12 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 				
 				moveFilesToArchiveFolder(items.get(0).getFin(), resource);
 			} catch (Exception e) {
+				EmailUtility.sendEmail("File moving to archive failed", Constant.FAILED);
 				e.printStackTrace();
 			}
 		}
+		
+		EmailUtility.sendEmail("File processing success", Constant.SUCCESS);
 	}
 
 	private int insertFileDetail(Resource resource, String agencyFein) throws Exception {
