@@ -107,7 +107,7 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 			} catch (Exception e) {
 				
 				try {
-					EmailUtility.sendEmail("File processing failed", Constant.FAILED);
+					EmailUtility.sendEmail("File processing failed for file "+resource.getFile().getAbsolutePath(), Constant.FAILED);
 				}catch(Exception ex) {
 					ex.printStackTrace();
 				}
@@ -182,7 +182,7 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 				moveFilesToArchiveFolder(items.get(0).getFin(), resource);
 			} catch (Exception e) {
 				try {
-					EmailUtility.sendEmail("File moving to archive failed", Constant.FAILED);
+					EmailUtility.sendEmail("File moving to archive failed for file - "+resource.getFile().getAbsolutePath(), Constant.FAILED);
 				}catch(Exception ex) {
 					ex.printStackTrace();
 				}
@@ -191,7 +191,7 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 			}
 		}
 		try {
-			EmailUtility.sendEmail("File processing success", Constant.SUCCESS);
+			EmailUtility.sendEmail("File processing success for file - "+resource.getFile().getAbsolutePath(), Constant.SUCCESS);
 		}catch(Exception ex) {
 			ex.printStackTrace();
 		}
@@ -240,7 +240,7 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 	        } catch (Exception e) {
 	            System.err.println("Error moving the file: " + e.getMessage());
 	            try {
-					EmailUtility.sendEmail("File moving to archive folder got failed", Constant.FAILED);
+					EmailUtility.sendEmail("File moving to archive folder got failed for file - "+resource.getFile().getAbsolutePath(), Constant.FAILED);
 				}catch(Exception ex) {
 					ex.printStackTrace();
 				}
