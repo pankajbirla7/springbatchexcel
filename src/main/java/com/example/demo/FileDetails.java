@@ -1,6 +1,6 @@
 package com.example.demo;
 
-import java.sql.Date;
+import java.util.Date;
 
 public class FileDetails {
 

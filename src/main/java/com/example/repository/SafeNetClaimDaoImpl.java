@@ -39,17 +39,9 @@ public class SafeNetClaimDaoImpl implements SafeNetClaimDao {
 
 		for (Map<String, Object> row : rows) {
 			SafeNetClaim safeNetClaim = new SafeNetClaim();
-			//int id = (Integer) row.get("ID");
 			int claimId = (int) row.get("claimId");
-		//	Date dateEnt = (Date) row.get("DateEntered");
-		//	Date datToSfs = (Date) row.get("DateToSFS");
-		//	String statuscd = (String) row.get("statuscd");
 			
-			//safeNetClaim.setId(id);
 			safeNetClaim.setClaimId(claimId);
-		///	safeNetClaim.setDateEntered(dateEnt);
-		//	safeNetClaim.setDateToSfs(datToSfs);
-		//	safeNetClaim.setStatuscd(statuscd);
 
 			safeNetClaims.add(safeNetClaim);
 		}

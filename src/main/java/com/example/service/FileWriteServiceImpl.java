@@ -3,6 +3,7 @@ package com.example.service;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +12,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import com.example.demo.Constants;
+import com.example.demo.FileDetails;
 import com.example.dto.SafeNetClaim;
 import com.example.dto.StdClaim;
 import com.example.repository.SafeNetClaimDao;
@@ -27,6 +29,9 @@ public class FileWriteServiceImpl implements FileWriteService {
 
 	@Autowired
 	SafeNetClaimDao safeNetClaimDao;
+	
+	@Autowired
+	FileDao fileDao;
 
 	@Value("${stg.file.path}")
 	private String stgFileDirectory;
@@ -34,21 +39,22 @@ public class FileWriteServiceImpl implements FileWriteService {
 	@Override
 	public void generateFile() {
 
-		List<StdClaim> stdClaims = stdClaimDao.getStdClaimDetails(Constants.PROCESSED);
+		List<StdClaim> stdClaims = stdClaimDao.getStdClaimDetails(Constants.NEW);
 		System.out.println("total stdClaimList " + stdClaims.size());
 
 		for (StdClaim stdClaim : stdClaims) {
-			int claimCount = safeNetClaimDao.getClaimCountByDateEntered(stdClaim.getDateEntered());
+			FileDetails fileDetails = fileDao.getFileDetailsByFileID(stdClaim.getFileid());
+			int claimCount = stdClaimDao.getClaimCountByDateEntered(fileDetails.getSubmitDate(), Constants.NEW);
 			System.out.println("Total Cliam count for stadClaim date value greater than : "
-					+ stdClaim.getDateEntered().toString() + " for file Id : " + stdClaim.getFileid());
+					+ " for file Id : " + stdClaim.getFileid());
 
-			List<SafeNetClaim> safeNetClaims = safeNetClaimDao.getClaimIds(stdClaim.getDateEntered());
-			writeFirstClaimCountRowInFile(claimCount, stdClaim, safeNetClaims);
+			List<StdClaim> stdClaims2 = stdClaimDao.getClaimIds(fileDetails.getSubmitDate(), Constants.NEW);
+			writeFirstClaimCountRowInFile(claimCount, stdClaim, stdClaims2);
 
 		}
 	}
 
-	private void writeFirstClaimCountRowInFile(int claimCount, StdClaim stdClaim, List<SafeNetClaim> safeNetClaims) {
+	private void writeFirstClaimCountRowInFile(int claimCount, StdClaim stdClaim1, List<StdClaim> stdClaims2) {
 		String ssid = "12969";
 		String ctlNum = "SFNET";
 		
@@ -71,12 +77,12 @@ public class FileWriteServiceImpl implements FileWriteService {
         // Write data to the file
 		try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
 			writer.write(firstRow);
-            System.out.println("Data written to file successfully.");
+            System.out.println("FIrst Row Data written to file successfully.");
         
 			int dohTransCtrlNo = 0;
-			for (SafeNetClaim safeNetClaim : safeNetClaims) {
+			for (StdClaim stdClaim : stdClaims2) {
 	
-					int currClaimId = safeNetClaim.getClaimId();
+					int currClaimId = stdClaim.getId();
 		
 					List<String> claimIds = new ArrayList<>();
 		
