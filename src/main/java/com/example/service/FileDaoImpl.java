@@ -1,6 +1,5 @@
 package com.example.service;
 
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -10,7 +9,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import com.example.demo.FileDetails;
-import com.example.dto.StdClaim;
 
 @Repository
 public class FileDaoImpl implements FileDao {
@@ -22,13 +20,17 @@ public class FileDaoImpl implements FileDao {
 	public FileDetails getFileDetailsByFileID(int fileid) {
 		FileDetails fileDetails = new FileDetails();
 		
-		String sql = "SELECT * FROM file where id = ?";
+		String sql = "SELECT * FROM files where id = ?";
 
 		List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, new Object[]{fileid});
 
 		for (Map<String, Object> row : rows) {
+			int id = (int) row.get("id");
+			int agencyFin = (int) row.get("AgencyFEIN");
 			Date submDate = (Date) row.get("SubmitDate");
 			fileDetails.setSubmitDate(submDate);
+			fileDetails.setId(Long.valueOf(id));
+			fileDetails.setAgencyFin(String.valueOf(agencyFin));
 		}
 		return fileDetails;
 	}

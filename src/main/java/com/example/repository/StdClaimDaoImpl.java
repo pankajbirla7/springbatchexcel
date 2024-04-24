@@ -51,7 +51,7 @@ public class StdClaimDaoImpl implements StdClaimDao {
 
 		String sql = "SELECT distinct id from std_claims \n"
 				+ "	where DateEntered > ? \n"
-				+ "	and DateToSFS is null and status_cd = "+status+" order by id desc";
+				+ "	and DateToSFS is null and status_cd = "+status+" order by id asc";
 
 		List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, new Object[]{dateEntered});
 
