@@ -105,6 +105,12 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 				
 				closeWorkbook();
 			} catch (Exception e) {
+				
+				try {
+					EmailUtility.sendEmail("File processing failed for file "+resource.getFile().getAbsolutePath(), Constant.FAILED);
+				}catch(Exception ex) {
+					ex.printStackTrace();
+				}
 				throw new RuntimeException("Error opening Excel file", e);
 			}
 		}
@@ -175,9 +181,21 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 				
 				moveFilesToArchiveFolder(items.get(0).getFin(), resource);
 			} catch (Exception e) {
+				try {
+					EmailUtility.sendEmail("File moving to archive failed for file - "+resource.getFile().getAbsolutePath(), Constant.FAILED);
+				}catch(Exception ex) {
+					ex.printStackTrace();
+				}
+				
 				e.printStackTrace();
 			}
 		}
+		try {
+			EmailUtility.sendEmail("File processing success for file - "+resource.getFile().getAbsolutePath(), Constant.SUCCESS);
+		}catch(Exception ex) {
+			ex.printStackTrace();
+		}
+		
 	}
 
 	private int insertFileDetail(Resource resource, String agencyFein) throws Exception {
@@ -221,6 +239,11 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 	            System.out.println("File moved successfully from " + source + " to " + destination);
 	        } catch (Exception e) {
 	            System.err.println("Error moving the file: " + e.getMessage());
+	            try {
+					EmailUtility.sendEmail("File moving to archive folder got failed for file - "+resource.getFile().getAbsolutePath(), Constant.FAILED);
+				}catch(Exception ex) {
+					ex.printStackTrace();
+				}
 	            e.printStackTrace();
 	        }
 		}else {
