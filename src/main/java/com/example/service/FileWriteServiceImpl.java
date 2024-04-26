@@ -142,6 +142,38 @@ public class FileWriteServiceImpl implements FileWriteService {
 					String obligDate = vohDetails.getDfilled();
 					String intElig = vohDetails.getInterestEligible();
 					String paymentDate = vohDetails.getPaymentDate();
+					
+					
+					
+					String invoiceDateStr = invoiceDate != null ? invoiceDate.replaceAll("[^\\d]", "") : "";
+					String invoiceDateUpdated = "";
+					if (!invoiceDateStr.isEmpty()) {
+						invoiceDateUpdated = String.format("%08d", Integer.parseInt(invoiceDateStr));
+					}
+					
+					String recDatetStr = recvDate != null ? recvDate.replaceAll("[^\\d]", "") : "";
+					String rcvdDateUpdated = "";
+					if (!recDatetStr.isEmpty()) {
+						rcvdDateUpdated = String.format("%08d", Integer.parseInt(recDatetStr));
+					}
+					
+					String obligDateStr = obligDate.replaceAll("[^\\d]", "");
+					String obligDateUpdated = "";
+					if (!obligDateStr.isEmpty()) {
+						obligDateUpdated = String.format("%08d", Integer.parseInt(obligDateStr));
+					}
+					
+					String paymentDateStr = paymentDate.replaceAll("[^\\d]", "");
+					String paymentDateUpdated = "";
+					if (!paymentDateStr.isEmpty()) {
+						paymentDateUpdated = String.format("%08d", Integer.parseInt(paymentDateStr));
+					}
+					
+					String acctDateStr = acctDate.replaceAll("[^\\d]", "");
+					String acctDateUpdated = "";
+					if (!acctDateStr.isEmpty()) {
+						acctDateUpdated = String.format("%08d", Integer.parseInt(acctDateStr));
+					}
 
 					// Build the VOH record.
 					String thirdRow =
@@ -163,16 +195,16 @@ public class FileWriteServiceImpl implements FileWriteService {
 						    "+" +
 						    String.format("%-26.3f", claimTotal) +
 						    String.format("%-30s", invoiceNumber) +
-						    String.format("%08d", Integer.parseInt(invoiceDate)) + // Assuming invoiceDate is an integer, if not, adjust accordingly
-						    String.format("%08d", Integer.parseInt(recvDate)) +    // Assuming recvDate is an integer, if not, adjust accordingly
-						    String.format("%010d", Integer.parseInt(sfsVendorId)) + // Assuming sfsVendorId is an integer, if not, adjust accordingly
+						    invoiceDateUpdated + // Invoice date
+						    rcvdDateUpdated +    // Recieved date
+						    String.format("%010d", Integer.parseInt(sfsVendorId)) + 
 						    String.format("%-310s", " ") +
 						    String.format("%-1s", intElig) +
-						    String.format("%08d", Integer.parseInt(paymentDate)) + // Assuming paymentDate is an integer, if not, adjust accordingly
-						    String.format("%08d", Integer.parseInt(obligDate)) +   // Assuming obligDate is an integer, if not, adjust accordingly
+						    paymentDateUpdated + // Payment date
+						    obligDateUpdated + // Obliged date
 						    String.format("%-254s", " ") +
 						    String.format("%-143s", " ") +
-						    String.format("%08d", Integer.parseInt(acctDate)) +    // Assuming acctDate is an integer, if not, adjust accordingly
+						    acctDateUpdated + 
 						    String.format("%-93s", " ");
 
 					writer.newLine();
