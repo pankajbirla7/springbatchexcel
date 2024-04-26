@@ -1,12 +1,15 @@
 package com.example.service;
 
 import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,11 +18,15 @@ import org.springframework.stereotype.Service;
 
 import com.example.demo.Constants;
 import com.example.demo.FileDetails;
+import com.example.demo.utility.AESEncryption;
 import com.example.dto.SafeNetClaim;
 import com.example.dto.StdClaim;
 import com.example.dto.VohDetails;
 import com.example.repository.SafeNetClaimDao;
 import com.example.repository.StdClaimDao;
+import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Session;
 
 @Service
 public class FileWriteServiceImpl implements FileWriteService {
@@ -52,12 +59,59 @@ public class FileWriteServiceImpl implements FileWriteService {
 					+ " for file Id : " + stdClaim.getFileid());
 
 			List<StdClaim> stdClaims2 = stdClaimDao.getClaimIds(fileDetails.getSubmitDate(), Constants.NEW);
-			writeFirstClaimCountRowInFile(claimCount, stdClaim, stdClaims2, fileDetails);
+			String filePath = writeFirstClaimCountRowInFile(claimCount, stdClaim, stdClaims2, fileDetails);
+			moveFileToSFTP(filePath);
 
 		}
 	}
 
-	private void writeFirstClaimCountRowInFile(int claimCount, StdClaim stdClaim1, List<StdClaim> stdClaims2, FileDetails fileDetails) {
+	private void moveFileToSFTP(String filePath) {
+		String host = "your_sftp_host";
+        int port = 22; // Default SFTP port
+        String username = "your_username";   					//Please put username
+        String password = "your_password";   					//Please put password
+        String remoteDirectory = "/path/to/remote/directory";   //Please put path to remoteDirectory
+     // String localFilePath = "path/to/local/file";
+        String destinationFolder = "/destination/folder";       //Please put path to your destination folder to uplaod files
+        String secretKey = "your_secret_key";					//Please put secret key
+        
+        File f = new File(filePath);
+        String encryptedFileName = f.getName();
+
+        try {
+        	 AESEncryption.encryptFile(filePath, encryptedFileName, secretKey);
+
+             JSch jsch = new JSch();
+             Session session = jsch.getSession(username, host, port);
+             session.setPassword(password);
+
+             Properties config = new Properties();
+             config.put("StrictHostKeyChecking", "no");
+             session.setConfig(config);
+             session.connect();
+
+             ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
+             channelSftp.connect();
+
+             File encryptedFile = new File(encryptedFileName);
+             channelSftp.put(encryptedFile.getAbsolutePath(), remoteDirectory);
+
+             String fileName = encryptedFile.getName();
+             channelSftp.rename(remoteDirectory + "/" + fileName, destinationFolder + "/" + fileName);
+
+             encryptedFile.delete(); // Delete the temporary encrypted file
+
+             channelSftp.exit();
+             session.disconnect();
+
+             System.out.println("File uploaded successfully.");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+		
+	}
+
+	private String writeFirstClaimCountRowInFile(int claimCount, StdClaim stdClaim1, List<StdClaim> stdClaims2, FileDetails fileDetails) {
 		String ssid = "12969";
 		String ctlNum = "SFNET";
 		String pgmCode = "28638";
@@ -204,7 +258,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 						    obligDateUpdated + // Obliged date
 						    String.format("%-254s", " ") +
 						    String.format("%-143s", " ") +
-						    acctDateUpdated + 
+						    acctDateUpdated + // Account date
 						    String.format("%-93s", " ");
 
 					writer.newLine();
@@ -286,6 +340,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 	        } catch (Exception e) {
 	            e.printStackTrace();
 	        }
+			return filePath;
 		}
 
 		private VohDetails getVohRecordDetails(int currClaimId) {
