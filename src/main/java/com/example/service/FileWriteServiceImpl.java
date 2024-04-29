@@ -1,10 +1,16 @@
 package com.example.service;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -15,11 +21,21 @@ import org.springframework.stereotype.Service;
 
 import com.example.demo.Constants;
 import com.example.demo.FileDetails;
-import com.example.dto.SafeNetClaim;
 import com.example.dto.StdClaim;
 import com.example.dto.VohDetails;
 import com.example.repository.SafeNetClaimDao;
 import com.example.repository.StdClaimDao;
+
+import org.bouncycastle.openpgp.*;
+import org.bouncycastle.openpgp.operator.jcajce.JcePublicKeyKeyEncryptionMethodGenerator;
+import org.bouncycastle.openpgp.operator.jcajce.JcePBESecretKeyDecryptorBuilder;
+import org.bouncycastle.openpgp.operator.jcajce.JcePGPDataEncryptorBuilder;
+import org.bouncycastle.openpgp.operator.jcajce.JcePublicKeyDataDecryptorFactoryBuilder;
+import com.jcraft.jsch.*;
+import java.io.*;
+import java.security.SecureRandom;
+import java.security.Security;
+import java.util.Iterator;
 
 @Service
 public class FileWriteServiceImpl implements FileWriteService {
@@ -39,6 +55,12 @@ public class FileWriteServiceImpl implements FileWriteService {
 	@Value("${stg.file.path}")
 	private String stgFileDirectory;
 
+//	@Value("${public_key_path}")
+//	private String publicKeyPath;
+//	
+//	@Value("${private_key_path}")
+//	private String privateKeyPath;
+
 	@Override
 	public void generateFile() {
 
@@ -52,12 +74,164 @@ public class FileWriteServiceImpl implements FileWriteService {
 					+ " for file Id : " + stdClaim.getFileid());
 
 			List<StdClaim> stdClaims2 = stdClaimDao.getClaimIds(fileDetails.getSubmitDate(), Constants.NEW);
-			writeFirstClaimCountRowInFile(claimCount, stdClaim, stdClaims2, fileDetails);
+			String filePath = writeFirstClaimCountRowInFile(claimCount, stdClaim, stdClaims2, fileDetails);
+			
+			moveFileToSFTP(filePath);
 
 		}
 	}
 
-	private void writeFirstClaimCountRowInFile(int claimCount, StdClaim stdClaim1, List<StdClaim> stdClaims2, FileDetails fileDetails) {
+	private void moveFileToSFTP(String filePath) {
+		String publicKeyPath = "path/to/publicKey.asc"; // Path to your public key file
+        String privateKeyPath = "path/to/privateKey.asc"; // Path to your private key file
+        String inputFile = filePath; // Path to your file to encrypt and upload
+        String username = "yourSftpUsername";
+        String password = "yourSftpPassword";
+        String sftpHost = "yourSftpHost";
+        String sftpDestinationFolder = "foldername in sftp server path";
+        int sftpPort = 22; // Default SFTP port
+
+        try {
+        // Load keys
+        PGPPublicKey publicKey = loadPublicKey(publicKeyPath);
+        PGPSecretKey secretKey = loadSecretKey(privateKeyPath);
+
+        // Encrypt file
+        encryptFile(inputFile, publicKey);
+
+        // Decrypt file (optional)
+       // decryptFile(inputFile + ".pgp", secretKey);
+
+        // Upload encrypted file to SFTP server
+        uploadToSftp(inputFile + ".pgp", username, password, sftpHost, sftpPort, sftpDestinationFolder);
+        }catch(Exception e) {
+        	e.printStackTrace();
+        }
+    }
+
+    private static PGPPublicKey loadPublicKey(String publicKeyPath) throws IOException, PGPException {
+        Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+        InputStream keyInputStream = new FileInputStream(publicKeyPath);
+        PGPPublicKeyRingCollection pgpPub = new PGPPublicKeyRingCollection(keyInputStream);
+        Iterator<PGPPublicKeyRing> keyRingIterator = pgpPub.getKeyRings();
+        while (keyRingIterator.hasNext()) {
+            PGPPublicKeyRing keyRing = keyRingIterator.next();
+            Iterator<PGPPublicKey> keyIterator = keyRing.getPublicKeys();
+            while (keyIterator.hasNext()) {
+                PGPPublicKey key = keyIterator.next();
+                if (key.isEncryptionKey()) {
+                    return key;
+                }
+            }
+        }
+        throw new IllegalArgumentException("No encryption key found in the provided public key file.");
+    }
+
+    private static PGPSecretKey loadSecretKey(String privateKeyPath) throws IOException, PGPException {
+        Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+        InputStream keyInputStream = new FileInputStream(privateKeyPath);
+        PGPSecretKeyRingCollection pgpSec = new PGPSecretKeyRingCollection(keyInputStream);
+        Iterator<PGPSecretKeyRing> keyRingIterator = pgpSec.getKeyRings();
+        while (keyRingIterator.hasNext()) {
+            PGPSecretKeyRing keyRing = keyRingIterator.next();
+            Iterator<PGPSecretKey> keyIterator = keyRing.getSecretKeys();
+            while (keyIterator.hasNext()) {
+                PGPSecretKey key = keyIterator.next();
+                if (key.isSigningKey()) {
+                    return key;
+                }
+            }
+        }
+        throw new IllegalArgumentException("No signing key found in the provided private key file.");
+    }
+
+    private static void encryptFile(String inputFile, PGPPublicKey publicKey) throws IOException, PGPException {
+        InputStream in = new BufferedInputStream(new FileInputStream(inputFile));
+        OutputStream out = new BufferedOutputStream(new FileOutputStream(inputFile + ".pgp"));
+        PGPEncryptedDataGenerator encryptedDataGenerator = new PGPEncryptedDataGenerator(
+                new JcePGPDataEncryptorBuilder(PGPEncryptedData.CAST5)
+                        .setWithIntegrityPacket(true)
+                        .setSecureRandom(new SecureRandom())
+                        .setProvider("BC")
+        );
+        encryptedDataGenerator.addMethod(new JcePublicKeyKeyEncryptionMethodGenerator(publicKey).setProvider("BC"));
+        OutputStream encryptedOut = encryptedDataGenerator.open(out, new byte[1024]);
+        byte[] buffer = new byte[1024];
+        int bytesRead;
+        while ((bytesRead = in.read(buffer)) != -1) {
+            encryptedOut.write(buffer, 0, bytesRead);
+        }
+        encryptedOut.close();
+        out.close();
+        in.close();
+    }
+   
+//    private static void decryptFile(String inputFile, PGPSecretKey secretKey) throws IOException, PGPException {
+//        InputStream in = new BufferedInputStream(new FileInputStream(inputFile));
+//        InputStream privateKeyStream = secretKey.extractPrivateKey("your_private_key_password".toCharArray()).getKeyID();
+//        PGPObjectFactory pgpF = new PGPObjectFactory(PGPUtil.getDecoderStream(in), null);
+//        PGPEncryptedDataList enc;
+//        Object o = pgpF.nextObject();
+//        if (o instanceof PGPEncryptedDataList) {
+//            enc = (PGPEncryptedDataList) o;
+//        } else {
+//            enc = (PGPEncryptedDataList) pgpF.nextObject();
+//        }
+//        Iterator<?> it = enc.getEncryptedDataObjects();
+//        PGPPrivateKey privateKey = null;
+//        PGPPublicKeyEncryptedData pbe = null;
+//        while (privateKey == null && it.hasNext()) {
+//            pbe = (PGPPublicKeyEncryptedData) it.next();
+//            privateKey = findSecretKey(secretKey, pbe.getKeyID());
+//        }
+//        if (privateKey == null) {
+//            throw new IllegalArgumentException("Private key for message not found.");
+//        }
+//        InputStream clear = pbe.getDataStream(new JcePublicKeyDataDecryptorFactoryBuilder().setProvider("BC").build(privateKey));
+//        PGPObjectFactory plainFact = new PGPObjectFactory(clear, null);
+//        Object message = plainFact.nextObject();
+//        if (message instanceof PGPCompressedData) {
+//            PGPCompressedData cData = (PGPCompressedData) message;
+//            PGPObjectFactory pgpFact = new PGPObjectFactory(cData.getDataStream(), null);
+//            message = pgpFact.nextObject();
+//        }
+//        if (message instanceof PGPLiteralData) {
+//            PGPLiteralData ld = (PGPLiteralData) message;
+//            InputStream unc = ld.getInputStream();
+//            OutputStream fOut = new BufferedOutputStream(new FileOutputStream(inputFile + ".decrypted"));
+//            byte[] buffer = new byte[1024];
+//            int bytesRead;
+//            while ((bytesRead = unc.read(buffer)) != -1) {
+//                fOut.write(buffer, 0, bytesRead);
+//            }
+//            fOut.close();
+//            unc.close();
+//        } else {
+//            throw new IllegalArgumentException("Message is not a simple encrypted file - type unknown.");
+//        }
+//        in.close();
+//        privateKeyStream.close();
+//    }
+
+    private static PGPPrivateKey findSecretKey(PGPSecretKey secretKey, long keyID) throws PGPException {
+        return secretKey.extractPrivateKey(new JcePBESecretKeyDecryptorBuilder().setProvider("BC").build("your_private_key_password".toCharArray()));
+    }	
+    
+    private static void uploadToSftp(String inputFile, String username, String password, String sftpHost, int sftpPort, String sftpDestinationFolder) throws JSchException, SftpException {
+        JSch jsch = new JSch();
+        Session session = jsch.getSession(username, sftpHost, sftpPort);
+        session.setPassword(password);
+        session.setConfig("StrictHostKeyChecking", "no");
+        session.connect();
+        ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
+        channelSftp.connect();
+        channelSftp.cd(sftpDestinationFolder);
+        channelSftp.put(inputFile, inputFile.substring(inputFile.lastIndexOf("/") + 1)); // Destination file name on the server
+        channelSftp.disconnect();
+        session.disconnect();
+    }
+
+	private String writeFirstClaimCountRowInFile(int claimCount, StdClaim stdClaim1, List<StdClaim> stdClaims2, FileDetails fileDetails) {
 		String ssid = "12969";
 		String ctlNum = "SFNET";
 		String pgmCode = "28638";
@@ -285,7 +459,9 @@ public class FileWriteServiceImpl implements FileWriteService {
 				}
 	        } catch (Exception e) {
 	            e.printStackTrace();
+	            return null;
 	        }
+		return filePath;
 		}
 
 		private VohDetails getVohRecordDetails(int currClaimId) {
