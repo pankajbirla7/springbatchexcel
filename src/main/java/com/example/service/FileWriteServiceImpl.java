@@ -91,11 +91,12 @@ public class FileWriteServiceImpl implements FileWriteService {
         String host = "your_sftp_host";
         int port = 22; // Default SFTP port
         String username = "your_username";
+        String password = "your password";
         String privateKeyPath = "/path/to/private_key";
         String remoteDirectory = "/path/to/remote/directory";
         
         Utility.moveFileToSFTP(inputFilePath, outputFilePath, publicKeyPath, passphrase, 
-        		host, port, username, privateKeyPath, remoteDirectory);
+        		host, port, username, password, privateKeyPath, remoteDirectory);
 
 	}
 
