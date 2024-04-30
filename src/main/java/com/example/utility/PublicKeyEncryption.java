@@ -1,18 +1,19 @@
 package com.example.utility;
 
 import org.bouncycastle.bcpg.ArmoredOutputStream;
-import org.bouncycastle.bcpg.BCPGOutputStream;
 import org.bouncycastle.openpgp.*;
 import org.bouncycastle.openpgp.operator.jcajce.JcePGPDataEncryptorBuilder;
 import org.bouncycastle.openpgp.operator.jcajce.JcePublicKeyKeyEncryptionMethodGenerator;
 
 import java.io.*;
 import java.security.SecureRandom;
+import java.security.Security;
 import java.util.Iterator;
 
 public class PublicKeyEncryption {
 	public static void encryptFile(String inputFilePath, String outputFilePath, String publicKeyPath, String passphrase)
 			throws IOException, PGPException {
+		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider()); // Register Bouncy Castle provider
 		try (OutputStream outputStream = new FileOutputStream(outputFilePath)) {
 			PGPPublicKey publicKey = readPublicKey(publicKeyPath);
 
