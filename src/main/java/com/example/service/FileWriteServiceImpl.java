@@ -25,6 +25,7 @@ import com.example.dto.StdClaim;
 import com.example.dto.VohDetails;
 import com.example.repository.SafeNetClaimDao;
 import com.example.repository.StdClaimDao;
+import com.example.utility.Utility;
 
 import org.bouncycastle.openpgp.*;
 import org.bouncycastle.openpgp.operator.jcajce.JcePublicKeyKeyEncryptionMethodGenerator;
@@ -76,97 +77,114 @@ public class FileWriteServiceImpl implements FileWriteService {
 			List<StdClaim> stdClaims2 = stdClaimDao.getClaimIds(fileDetails.getSubmitDate(), Constants.NEW);
 			String filePath = writeFirstClaimCountRowInFile(claimCount, stdClaim, stdClaims2, fileDetails);
 
-			moveFileToSFTP(filePath);
+			encryptFileAndUploadToSftp(filePath);
 
 		}
 	}
 
-	private void moveFileToSFTP(String filePath) {
-		String publicKeyPath = "path/to/publicKey.asc"; // Path to your public key file
-		String privateKeyPath = "path/to/privateKey.asc"; // Path to your private key file
-		String inputFile = filePath; // Path to your file to encrypt and upload
-		String username = "yourSftpUsername";
-		String password = "yourSftpPassword";
-		String sftpHost = "yourSftpHost";
-		String sftpDestinationFolder = "foldername in sftp server path";
-		int sftpPort = 22; // Default SFTP port
+	private void encryptFileAndUploadToSftp(String filePath) {
+		String inputFilePath = filePath;
+		File f = new File(filePath);
+        String outputFilePath = f.getName()+".asc";
+        String publicKeyPath = "recipient_public_key.asc";
+        String passphrase = "your_passphrase";
+        String host = "your_sftp_host";
+        int port = 22; // Default SFTP port
+        String username = "your_username";
+        String privateKeyPath = "/path/to/private_key";
+        String remoteDirectory = "/path/to/remote/directory";
+        
+        Utility.moveFileToSFTP(inputFilePath, outputFilePath, publicKeyPath, passphrase, 
+        		host, port, username, privateKeyPath, remoteDirectory);
 
-		try {
-			// Load keys
-			PGPPublicKey publicKey = loadPublicKey(publicKeyPath);
-			PGPSecretKey secretKey = loadSecretKey(privateKeyPath);
-
-			// Encrypt file
-			encryptFile(inputFile, publicKey);
-
-			// Decrypt file (optional)
-			// decryptFile(inputFile + ".pgp", secretKey);
-
-			// Upload encrypted file to SFTP server
-			uploadToSftp(inputFile + ".pgp", username, password, sftpHost, sftpPort, sftpDestinationFolder);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
 	}
 
-	private static PGPPublicKey loadPublicKey(String publicKeyPath) throws IOException, PGPException {
-		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
-		try (InputStream keyInputStream = new FileInputStream(publicKeyPath)) {
-			PGPPublicKeyRingCollection pgpPub = new PGPPublicKeyRingCollection(keyInputStream);
-			Iterator<PGPPublicKeyRing> keyRingIterator = pgpPub.getKeyRings();
-			while (keyRingIterator.hasNext()) {
-				PGPPublicKeyRing keyRing = keyRingIterator.next();
-				Iterator<PGPPublicKey> keyIterator = keyRing.getPublicKeys();
-				while (keyIterator.hasNext()) {
-					PGPPublicKey key = keyIterator.next();
-					if (key.isEncryptionKey()) {
-						return key;
-					}
-				}
-			}
-		} catch (IOException | PGPException e) {
-			// Print or log the error message
-			e.printStackTrace();
-			throw e; // Rethrow the exception to the caller
-		}
-		throw new IllegalArgumentException("No encryption key found in the provided public key file.");
-	}
-
-	private static PGPSecretKey loadSecretKey(String privateKeyPath) throws IOException, PGPException {
-		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
-		InputStream keyInputStream = new FileInputStream(privateKeyPath);
-		PGPSecretKeyRingCollection pgpSec = new PGPSecretKeyRingCollection(keyInputStream);
-		Iterator<PGPSecretKeyRing> keyRingIterator = pgpSec.getKeyRings();
-		while (keyRingIterator.hasNext()) {
-			PGPSecretKeyRing keyRing = keyRingIterator.next();
-			Iterator<PGPSecretKey> keyIterator = keyRing.getSecretKeys();
-			while (keyIterator.hasNext()) {
-				PGPSecretKey key = keyIterator.next();
-				if (key.isSigningKey()) {
-					return key;
-				}
-			}
-		}
-		throw new IllegalArgumentException("No signing key found in the provided private key file.");
-	}
-
-	private static void encryptFile(String inputFile, PGPPublicKey publicKey) throws IOException, PGPException {
-		InputStream in = new BufferedInputStream(new FileInputStream(inputFile));
-		OutputStream out = new BufferedOutputStream(new FileOutputStream(inputFile + ".pgp"));
-		PGPEncryptedDataGenerator encryptedDataGenerator = new PGPEncryptedDataGenerator(
-				new JcePGPDataEncryptorBuilder(PGPEncryptedData.CAST5).setWithIntegrityPacket(true)
-						.setSecureRandom(new SecureRandom()).setProvider("BC"));
-		encryptedDataGenerator.addMethod(new JcePublicKeyKeyEncryptionMethodGenerator(publicKey).setProvider("BC"));
-		OutputStream encryptedOut = encryptedDataGenerator.open(out, new byte[1024]);
-		byte[] buffer = new byte[1024];
-		int bytesRead;
-		while ((bytesRead = in.read(buffer)) != -1) {
-			encryptedOut.write(buffer, 0, bytesRead);
-		}
-		encryptedOut.close();
-		out.close();
-		in.close();
-	}
+//	private void moveFileToSFTP(String filePath) {
+//		String publicKeyPath = "path/to/publicKey.asc"; // Path to your public key file
+//		String privateKeyPath = "path/to/privateKey.asc"; // Path to your private key file
+//		String inputFile = filePath; // Path to your file to encrypt and upload
+//		String username = "yourSftpUsername";
+//		String password = "yourSftpPassword";
+//		String sftpHost = "yourSftpHost";
+//		String sftpDestinationFolder = "foldername in sftp server path";
+//		int sftpPort = 22; // Default SFTP port
+//
+//		try {
+//			// Load keys
+//			PGPPublicKey publicKey = loadPublicKey(publicKeyPath);
+//			PGPSecretKey secretKey = loadSecretKey(privateKeyPath);
+//
+//			// Encrypt file
+//			encryptFile(inputFile, publicKey);
+//
+//			// Decrypt file (optional)
+//			// decryptFile(inputFile + ".pgp", secretKey);
+//
+//			// Upload encrypted file to SFTP server
+//			uploadToSftp(inputFile + ".pgp", username, password, sftpHost, sftpPort, sftpDestinationFolder);
+//		} catch (Exception e) {
+//			e.printStackTrace();
+//		}
+//	}
+//
+//	private static PGPPublicKey loadPublicKey(String publicKeyPath) throws IOException, PGPException {
+//		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+//		try (InputStream keyInputStream = new FileInputStream(publicKeyPath)) {
+//			PGPPublicKeyRingCollection pgpPub = new PGPPublicKeyRingCollection(keyInputStream);
+//			Iterator<PGPPublicKeyRing> keyRingIterator = pgpPub.getKeyRings();
+//			while (keyRingIterator.hasNext()) {
+//				PGPPublicKeyRing keyRing = keyRingIterator.next();
+//				Iterator<PGPPublicKey> keyIterator = keyRing.getPublicKeys();
+//				while (keyIterator.hasNext()) {
+//					PGPPublicKey key = keyIterator.next();
+//					if (key.isEncryptionKey()) {
+//						return key;
+//					}
+//				}
+//			}
+//		} catch (IOException | PGPException e) {
+//			// Print or log the error message
+//			e.printStackTrace();
+//			throw e; // Rethrow the exception to the caller
+//		}
+//		throw new IllegalArgumentException("No encryption key found in the provided public key file.");
+//	}
+//
+//	private static PGPSecretKey loadSecretKey(String privateKeyPath) throws IOException, PGPException {
+//		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+//		InputStream keyInputStream = new FileInputStream(privateKeyPath);
+//		PGPSecretKeyRingCollection pgpSec = new PGPSecretKeyRingCollection(keyInputStream);
+//		Iterator<PGPSecretKeyRing> keyRingIterator = pgpSec.getKeyRings();
+//		while (keyRingIterator.hasNext()) {
+//			PGPSecretKeyRing keyRing = keyRingIterator.next();
+//			Iterator<PGPSecretKey> keyIterator = keyRing.getSecretKeys();
+//			while (keyIterator.hasNext()) {
+//				PGPSecretKey key = keyIterator.next();
+//				if (key.isSigningKey()) {
+//					return key;
+//				}
+//			}
+//		}
+//		throw new IllegalArgumentException("No signing key found in the provided private key file.");
+//	}
+//
+//	private static void encryptFile(String inputFile, PGPPublicKey publicKey) throws IOException, PGPException {
+//		InputStream in = new BufferedInputStream(new FileInputStream(inputFile));
+//		OutputStream out = new BufferedOutputStream(new FileOutputStream(inputFile + ".pgp"));
+//		PGPEncryptedDataGenerator encryptedDataGenerator = new PGPEncryptedDataGenerator(
+//				new JcePGPDataEncryptorBuilder(PGPEncryptedData.CAST5).setWithIntegrityPacket(true)
+//						.setSecureRandom(new SecureRandom()).setProvider("BC"));
+//		encryptedDataGenerator.addMethod(new JcePublicKeyKeyEncryptionMethodGenerator(publicKey).setProvider("BC"));
+//		OutputStream encryptedOut = encryptedDataGenerator.open(out, new byte[1024]);
+//		byte[] buffer = new byte[1024];
+//		int bytesRead;
+//		while ((bytesRead = in.read(buffer)) != -1) {
+//			encryptedOut.write(buffer, 0, bytesRead);
+//		}
+//		encryptedOut.close();
+//		out.close();
+//		in.close();
+//	}
 
 //    private static void decryptFile(String inputFile, PGPSecretKey secretKey) throws IOException, PGPException {
 //        InputStream in = new BufferedInputStream(new FileInputStream(inputFile));
