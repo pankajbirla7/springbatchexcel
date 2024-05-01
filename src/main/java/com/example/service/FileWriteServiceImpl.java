@@ -9,20 +9,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.math.BigDecimal;package com.example.service;
-
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.BufferedWriter;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.util.*;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openpgp.operator.jcajce.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -140,7 +130,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 
 			// Load the recipient's public key
 			InputStream keyIn = new FileInputStream(new File(publicKey));
-
+			 Security.addProvider(new BouncyCastleProvider());
 			PGPPublicKey publicKeysLoaded = readPublicKey(keyIn);
 
 			// Write encrypted data to the output stream
