@@ -36,6 +36,8 @@ import com.jcraft.jsch.*;
 import java.io.*;
 import java.security.SecureRandom;
 import java.security.Security;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Iterator;
 
 @Service
@@ -55,12 +57,44 @@ public class FileWriteServiceImpl implements FileWriteService {
 
 	@Value("${stg.file.path}")
 	private String stgFileDirectory;
+	
+	@Value("${encrypted.file.path}")
+	private String encryptedFileDirectory;
 
-//	@Value("${public_key_path}")
-//	private String publicKeyPath;
-//	
-//	@Value("${private_key_path}")
-//	private String privateKeyPath;
+	@Value("${decrypted.file.path}")
+	private String decryptedFileDirectory;
+
+	@Value("${download.sftp.file.path}")
+	private String downloadSftpFilePath;
+
+	@Value("${public_key_path}")
+	private String publicKeyPath;
+
+	@Value("${private_key_path}")
+	private String privateKeyPath;
+
+	@Value("${sftp.host}")
+	private String sftpHost;
+
+	@Value("${sftp.username}")
+	private String sftpUserName;
+
+	@Value("${sftp.password}")
+	private String sftpPassword;
+
+	@Value("${passphrase}")
+	private String passphrase;
+	
+	@Value("${sftp.port}")
+	private int port;
+
+	@Value("${sftp.remotedirectory.upload}")
+	private String sftpRemoteUploadDirectory;
+	
+	@Value("${sftp.remotedirectory.download}")
+	private String sftpRemoteDownloadDirectory;
+	
+	
 
 	@Override
 	public void generateFile() {
@@ -78,182 +112,37 @@ public class FileWriteServiceImpl implements FileWriteService {
 			String filePath = writeFirstClaimCountRowInFile(claimCount, stdClaim, stdClaims2, fileDetails);
 
 			encryptFileAndUploadToSftp(filePath);
-
 		}
 	}
 
+	///////////////////////////////Encrypt and Upload File/////////////////////////////////////
+	
 	private void encryptFileAndUploadToSftp(String filePath) {
 		String inputFilePath = filePath;
 		File f = new File(filePath);
-        String outputFilePath = f.getName()+".asc";
-        String publicKeyPath = "recipient_public_key.asc";
-        String passphrase = "your_passphrase";
-        String host = "your_sftp_host";
-        int port = 22; // Default SFTP port
-        String username = "your_username";
-        String password = "your password";
-        String privateKeyPath = "/path/to/private_key";
-        String remoteDirectory = "/path/to/remote/directory";
+		LocalDate today = LocalDate.now();
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMddyyyy");
+		String formattedDate = today.format(formatter);
+		
+		String encryptedFileName = "SN12969_"+formattedDate;
+		String outputFilePath = encryptedFileDirectory + encryptedFileName + ".gpg";
+       
         
         Utility.moveFileToSFTP(inputFilePath, outputFilePath, publicKeyPath, passphrase, 
-        		host, port, username, password, privateKeyPath, remoteDirectory);
-
+        		sftpHost, port, sftpUserName, sftpPassword, privateKeyPath, sftpRemoteUploadDirectory);
+        
 	}
+	
+	///////////////////////////////Download ANd Decrypt File/////////////////////////////////
+	
+	private void downloadAndDecrptFile() {
 
-//	private void moveFileToSFTP(String filePath) {
-//		String publicKeyPath = "path/to/publicKey.asc"; // Path to your public key file
-//		String privateKeyPath = "path/to/privateKey.asc"; // Path to your private key file
-//		String inputFile = filePath; // Path to your file to encrypt and upload
-//		String username = "yourSftpUsername";
-//		String password = "yourSftpPassword";
-//		String sftpHost = "yourSftpHost";
-//		String sftpDestinationFolder = "foldername in sftp server path";
-//		int sftpPort = 22; // Default SFTP port
-//
-//		try {
-//			// Load keys
-//			PGPPublicKey publicKey = loadPublicKey(publicKeyPath);
-//			PGPSecretKey secretKey = loadSecretKey(privateKeyPath);
-//
-//			// Encrypt file
-//			encryptFile(inputFile, publicKey);
-//
-//			// Decrypt file (optional)
-//			// decryptFile(inputFile + ".pgp", secretKey);
-//
-//			// Upload encrypted file to SFTP server
-//			uploadToSftp(inputFile + ".pgp", username, password, sftpHost, sftpPort, sftpDestinationFolder);
-//		} catch (Exception e) {
-//			e.printStackTrace();
-//		}
-//	}
-//
-//	private static PGPPublicKey loadPublicKey(String publicKeyPath) throws IOException, PGPException {
-//		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
-//		try (InputStream keyInputStream = new FileInputStream(publicKeyPath)) {
-//			PGPPublicKeyRingCollection pgpPub = new PGPPublicKeyRingCollection(keyInputStream);
-//			Iterator<PGPPublicKeyRing> keyRingIterator = pgpPub.getKeyRings();
-//			while (keyRingIterator.hasNext()) {
-//				PGPPublicKeyRing keyRing = keyRingIterator.next();
-//				Iterator<PGPPublicKey> keyIterator = keyRing.getPublicKeys();
-//				while (keyIterator.hasNext()) {
-//					PGPPublicKey key = keyIterator.next();
-//					if (key.isEncryptionKey()) {
-//						return key;
-//					}
-//				}
-//			}
-//		} catch (IOException | PGPException e) {
-//			// Print or log the error message
-//			e.printStackTrace();
-//			throw e; // Rethrow the exception to the caller
-//		}
-//		throw new IllegalArgumentException("No encryption key found in the provided public key file.");
-//	}
-//
-//	private static PGPSecretKey loadSecretKey(String privateKeyPath) throws IOException, PGPException {
-//		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
-//		InputStream keyInputStream = new FileInputStream(privateKeyPath);
-//		PGPSecretKeyRingCollection pgpSec = new PGPSecretKeyRingCollection(keyInputStream);
-//		Iterator<PGPSecretKeyRing> keyRingIterator = pgpSec.getKeyRings();
-//		while (keyRingIterator.hasNext()) {
-//			PGPSecretKeyRing keyRing = keyRingIterator.next();
-//			Iterator<PGPSecretKey> keyIterator = keyRing.getSecretKeys();
-//			while (keyIterator.hasNext()) {
-//				PGPSecretKey key = keyIterator.next();
-//				if (key.isSigningKey()) {
-//					return key;
-//				}
-//			}
-//		}
-//		throw new IllegalArgumentException("No signing key found in the provided private key file.");
-//	}
-//
-//	private static void encryptFile(String inputFile, PGPPublicKey publicKey) throws IOException, PGPException {
-//		InputStream in = new BufferedInputStream(new FileInputStream(inputFile));
-//		OutputStream out = new BufferedOutputStream(new FileOutputStream(inputFile + ".pgp"));
-//		PGPEncryptedDataGenerator encryptedDataGenerator = new PGPEncryptedDataGenerator(
-//				new JcePGPDataEncryptorBuilder(PGPEncryptedData.CAST5).setWithIntegrityPacket(true)
-//						.setSecureRandom(new SecureRandom()).setProvider("BC"));
-//		encryptedDataGenerator.addMethod(new JcePublicKeyKeyEncryptionMethodGenerator(publicKey).setProvider("BC"));
-//		OutputStream encryptedOut = encryptedDataGenerator.open(out, new byte[1024]);
-//		byte[] buffer = new byte[1024];
-//		int bytesRead;
-//		while ((bytesRead = in.read(buffer)) != -1) {
-//			encryptedOut.write(buffer, 0, bytesRead);
-//		}
-//		encryptedOut.close();
-//		out.close();
-//		in.close();
-//	}
-
-//    private static void decryptFile(String inputFile, PGPSecretKey secretKey) throws IOException, PGPException {
-//        InputStream in = new BufferedInputStream(new FileInputStream(inputFile));
-//        InputStream privateKeyStream = secretKey.extractPrivateKey("your_private_key_password".toCharArray()).getKeyID();
-//        PGPObjectFactory pgpF = new PGPObjectFactory(PGPUtil.getDecoderStream(in), null);
-//        PGPEncryptedDataList enc;
-//        Object o = pgpF.nextObject();
-//        if (o instanceof PGPEncryptedDataList) {
-//            enc = (PGPEncryptedDataList) o;
-//        } else {
-//            enc = (PGPEncryptedDataList) pgpF.nextObject();
-//        }
-//        Iterator<?> it = enc.getEncryptedDataObjects();
-//        PGPPrivateKey privateKey = null;
-//        PGPPublicKeyEncryptedData pbe = null;
-//        while (privateKey == null && it.hasNext()) {
-//            pbe = (PGPPublicKeyEncryptedData) it.next();
-//            privateKey = findSecretKey(secretKey, pbe.getKeyID());
-//        }
-//        if (privateKey == null) {
-//            throw new IllegalArgumentException("Private key for message not found.");
-//        }
-//        InputStream clear = pbe.getDataStream(new JcePublicKeyDataDecryptorFactoryBuilder().setProvider("BC").build(privateKey));
-//        PGPObjectFactory plainFact = new PGPObjectFactory(clear, null);
-//        Object message = plainFact.nextObject();
-//        if (message instanceof PGPCompressedData) {
-//            PGPCompressedData cData = (PGPCompressedData) message;
-//            PGPObjectFactory pgpFact = new PGPObjectFactory(cData.getDataStream(), null);
-//            message = pgpFact.nextObject();
-//        }
-//        if (message instanceof PGPLiteralData) {
-//            PGPLiteralData ld = (PGPLiteralData) message;
-//            InputStream unc = ld.getInputStream();
-//            OutputStream fOut = new BufferedOutputStream(new FileOutputStream(inputFile + ".decrypted"));
-//            byte[] buffer = new byte[1024];
-//            int bytesRead;
-//            while ((bytesRead = unc.read(buffer)) != -1) {
-//                fOut.write(buffer, 0, bytesRead);
-//            }
-//            fOut.close();
-//            unc.close();
-//        } else {
-//            throw new IllegalArgumentException("Message is not a simple encrypted file - type unknown.");
-//        }
-//        in.close();
-//        privateKeyStream.close();
-//    }
-
-	private static PGPPrivateKey findSecretKey(PGPSecretKey secretKey, long keyID) throws PGPException {
-		return secretKey.extractPrivateKey(new JcePBESecretKeyDecryptorBuilder().setProvider("BC")
-				.build("your_private_key_password".toCharArray()));
+		Utility.downloadFilesFromSftpAndDecrypt(downloadSftpFilePath, decryptedFileDirectory,
+				passphrase, sftpHost, port, sftpUserName, sftpPassword, privateKeyPath, sftpRemoteDownloadDirectory);
 	}
-
-	private static void uploadToSftp(String inputFile, String username, String password, String sftpHost, int sftpPort,
-			String sftpDestinationFolder) throws JSchException, SftpException {
-		JSch jsch = new JSch();
-		Session session = jsch.getSession(username, sftpHost, sftpPort);
-		session.setPassword(password);
-		session.setConfig("StrictHostKeyChecking", "no");
-		session.connect();
-		ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
-		channelSftp.connect();
-		channelSftp.cd(sftpDestinationFolder);
-		channelSftp.put(inputFile, inputFile.substring(inputFile.lastIndexOf("/") + 1)); // Destination file name on the
-																							// server
-		channelSftp.disconnect();
-		session.disconnect();
-	}
+	
+	
+	/////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	private String writeFirstClaimCountRowInFile(int claimCount, StdClaim stdClaim1, List<StdClaim> stdClaims2,
 			FileDetails fileDetails) {
