@@ -5,9 +5,12 @@ import com.jcraft.jsch.*;
 import org.bouncycastle.openpgp.PGPException;
 
 import java.io.*;
+import java.util.Vector;
 
 public class Utility {
 
+	///////////////////////////// Encrypt File and Upload File To SFTP server ///////////////////////////////
+	
 	public static void encryptAndUpload(String inputFilePath, String outputFilePath, String publicKeyPath, String passphrase, 
 			String host, int port, String username, String password, String privateKeyPath, String remoteDirectory) throws IOException, PGPException, JSchException {
         // Encrypt the file
@@ -28,19 +31,17 @@ public class Utility {
         jsch.addIdentity(privateKeyPath, passphrase);
 
         Session session = jsch.getSession(username, host, port);
+        session.setPassword(password);
         session.setConfig("StrictHostKeyChecking", "no");
         session.connect();
 
         ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
         channelSftp.connect();
 
-        // Change directory to the remote directory
         channelSftp.cd(remoteDirectory);
 
-        // Upload the file
         channelSftp.put(new FileInputStream(localFilePath), new File(localFilePath).getName());
 
-        // Disconnect from the server
         channelSftp.disconnect();
         session.disconnect();
 
@@ -56,4 +57,60 @@ public class Utility {
 			e.printStackTrace();
 		}
     }
+    
+    /////////////////////////////// Download SFTP File And Decryopt ///////////////////////////////
+
+	public static void downloadFilesFromSftpAndDecrypt(String downloadFilePath, String decryptFilePath, 
+			String passphrase, String host, int port, String username, String password, String privateKeyPath, String remoteDirectory) {
+		try {
+			downloadFiles(host, port, username, password, passphrase, privateKeyPath, downloadFilePath, remoteDirectory);
+			decryptFile(passphrase, privateKeyPath, downloadFilePath, remoteDirectory);
+		}catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	private static void decryptFile(String passphrase, String privateKeyPath, String downloadFilePath, String remoteDirectory) {
+		
+        // Decrypting files
+        try {
+			PublicKeyEncryption.deryptFile(passphrase, privateKeyPath, downloadFilePath, remoteDirectory);
+        } catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	private static void downloadFiles(String host, int port, String username, String password, String passphrase,
+			String privateKeyPath, String downloadFilePath, String remoteDirectory) {
+		try {
+			JSch jsch = new JSch();
+			Session session = jsch.getSession(username, host, port);
+			session.setPassword(password);
+			session.setConfig("StrictHostKeyChecking", "no");
+			session.connect();
+
+			ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
+			channelSftp.connect();
+
+			channelSftp.cd(remoteDirectory);
+
+			@SuppressWarnings("unchecked")
+			Vector<ChannelSftp.LsEntry> fileList = channelSftp.ls(".");
+			for (ChannelSftp.LsEntry entry : fileList) {
+				if (!entry.getAttrs().isDir()) {
+					String remoteFileName = entry.getFilename();
+					String localFilePath = downloadFilePath + File.separator + remoteFileName;
+					channelSftp.get(remoteFileName, localFilePath);
+
+					System.out.println("File downloaded: " + remoteFileName);
+				}
+			}
+
+			channelSftp.disconnect();
+			session.disconnect();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		System.out.println("All files downloaded successfully.");
+	}
 }
