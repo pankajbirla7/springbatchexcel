@@ -64,17 +64,17 @@ public class Utility {
 			String passphrase, String host, int port, String username, String password, String privateKeyPath, String remoteDirectory) {
 		try {
 			downloadFiles(host, port, username, password, passphrase, privateKeyPath, downloadFilePath, remoteDirectory);
-			decryptFile(passphrase, privateKeyPath, downloadFilePath, remoteDirectory);
+			decryptFile(passphrase, privateKeyPath, downloadFilePath, decryptFilePath);
 		}catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
-	private static void decryptFile(String passphrase, String privateKeyPath, String downloadFilePath, String remoteDirectory) {
+	private static void decryptFile(String passphrase, String privateKeyPath, String downloadFilePath, String decryptFilePath) {
 		
         // Decrypting files
         try {
-			PublicKeyEncryption.deryptFile(passphrase, privateKeyPath, downloadFilePath, remoteDirectory);
+			PublicKeyEncryption.decryptFilesInDirectory(downloadFilePath, decryptFilePath, privateKeyPath, passphrase);
         } catch (Exception e) {
 			e.printStackTrace();
 		}
