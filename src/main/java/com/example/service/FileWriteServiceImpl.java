@@ -135,7 +135,8 @@ public class FileWriteServiceImpl implements FileWriteService {
 	
 	///////////////////////////////Download ANd Decrypt File/////////////////////////////////
 	
-	private void downloadAndDecrptFile() {
+	@Override
+	public void downloadAndDecrptFile() {
 
 		Utility.downloadFilesFromSftpAndDecrypt(downloadSftpFilePath, decryptedFileDirectory,
 				passphrase, sftpHost, port, sftpUserName, sftpPassword, privateKeyPath, sftpRemoteDownloadDirectory);
