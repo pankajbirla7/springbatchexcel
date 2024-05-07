@@ -1,16 +1,39 @@
 package com.example.utility;
 
-import org.bouncycastle.bcpg.ArmoredOutputStream;
-import org.bouncycastle.openpgp.*;
-import org.bouncycastle.openpgp.operator.jcajce.JcaKeyFingerprintCalculator;
-import org.bouncycastle.openpgp.operator.jcajce.JcePBESecretKeyDecryptorBuilder;
-import org.bouncycastle.openpgp.operator.jcajce.JcePGPDataEncryptorBuilder;
-import org.bouncycastle.openpgp.operator.jcajce.JcePublicKeyKeyEncryptionMethodGenerator;
-
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.security.SecureRandom;
 import java.security.Security;
 import java.util.Iterator;
+
+import org.bouncycastle.bcpg.ArmoredOutputStream;
+import org.bouncycastle.openpgp.PGPCompressedData;
+import org.bouncycastle.openpgp.PGPCompressedDataGenerator;
+import org.bouncycastle.openpgp.PGPEncryptedData;
+import org.bouncycastle.openpgp.PGPEncryptedDataGenerator;
+import org.bouncycastle.openpgp.PGPEncryptedDataList;
+import org.bouncycastle.openpgp.PGPException;
+import org.bouncycastle.openpgp.PGPLiteralData;
+import org.bouncycastle.openpgp.PGPLiteralDataGenerator;
+import org.bouncycastle.openpgp.PGPObjectFactory;
+import org.bouncycastle.openpgp.PGPPBEEncryptedData;
+import org.bouncycastle.openpgp.PGPPrivateKey;
+import org.bouncycastle.openpgp.PGPPublicKey;
+import org.bouncycastle.openpgp.PGPPublicKeyRing;
+import org.bouncycastle.openpgp.PGPPublicKeyRingCollection;
+import org.bouncycastle.openpgp.PGPSecretKey;
+import org.bouncycastle.openpgp.PGPSecretKeyRing;
+import org.bouncycastle.openpgp.PGPSecretKeyRingCollection;
+import org.bouncycastle.openpgp.PGPUtil;
+import org.bouncycastle.openpgp.operator.jcajce.JcePBEDataDecryptorFactoryBuilder;
+import org.bouncycastle.openpgp.operator.jcajce.JcePGPDataEncryptorBuilder;
+import org.bouncycastle.openpgp.operator.jcajce.JcePublicKeyKeyEncryptionMethodGenerator;
 
 public class PublicKeyEncryption {
 	public static void encryptFile(String inputFilePath, String outputFilePath, String publicKeyPath, String passphrase)
@@ -74,35 +97,58 @@ public class PublicKeyEncryption {
 	// Decrypt file using private key and passphrase
 	public static void decryptFile(String inputFilePath, String outputFilePath, InputStream privateKeyInputStream,
 			String passphrase) throws Exception {
-		try (OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(outputFilePath));
-				InputStream inputStream = new BufferedInputStream(new FileInputStream(inputFilePath))) {
-			// Decrypt the file using the private key and passphrase
-			PGPObjectFactory pgpF = new PGPObjectFactory(inputStream);
-			Object o;
-			while ((o = pgpF.nextObject()) != null) {
-				if (o instanceof org.bouncycastle.openpgp.PGPCompressedData) {
-					org.bouncycastle.openpgp.PGPCompressedData cData = (org.bouncycastle.openpgp.PGPCompressedData) o;
-					try (InputStream clear = cData.getDataStream()) {
-						PGPObjectFactory pgpFact = new PGPObjectFactory(clear);
-						Object message = pgpFact.nextObject();
-						if (message instanceof org.bouncycastle.openpgp.PGPOnePassSignatureList) {
-							message = pgpFact.nextObject();
-						}
-						if (message instanceof org.bouncycastle.openpgp.PGPLiteralData) {
-							org.bouncycastle.openpgp.PGPLiteralData ld = (org.bouncycastle.openpgp.PGPLiteralData) message;
-							try (InputStream literalDataInputStream = ld.getInputStream()) {
-								byte[] buffer = new byte[1024];
-								int bytesRead;
-								while ((bytesRead = literalDataInputStream.read(buffer)) != -1) {
-									outputStream.write(buffer, 0, bytesRead);
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
+		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+
+        try (
+                InputStream inputStream = new BufferedInputStream(new FileInputStream(inputFilePath));
+                OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(outputFilePath))
+        ) {
+            // Load private key
+            PGPSecretKeyRingCollection pgpSecretKeyRingCollection = new PGPSecretKeyRingCollection(PGPUtil.getDecoderStream(privateKeyInputStream));
+            PGPSecretKey secretKey = null;
+
+            // Iterate over secret key rings
+            Iterator<PGPSecretKeyRing> keyRingIterator = pgpSecretKeyRingCollection.getKeyRings();
+            while (keyRingIterator.hasNext()) {
+                PGPSecretKeyRing keyRing = keyRingIterator.next();
+                Iterator<PGPSecretKey> secretKeyIterator = keyRing.getSecretKeys();
+                while (secretKeyIterator.hasNext()) {
+                    secretKey = secretKeyIterator.next();
+                }
+            }
+
+            // Extract private key
+            PGPPrivateKey privateKey = secretKey.extractPrivateKey(new org.bouncycastle.openpgp.operator.jcajce.JcePBESecretKeyDecryptorBuilder().setProvider("BC").build(passphrase.toCharArray()));
+
+            // Decrypt the file
+            PGPObjectFactory pgpObjectFactory = new PGPObjectFactory(inputStream, null); // Pass null for the fingerprint calculator
+            Object object = pgpObjectFactory.nextObject();
+
+            if (object instanceof PGPEncryptedDataList) {
+                PGPEncryptedDataList encryptedDataList = (PGPEncryptedDataList) object;
+                PGPPBEEncryptedData encryptedData = (PGPPBEEncryptedData) encryptedDataList.get(0);
+                InputStream clear = encryptedData.getDataStream(new JcePBEDataDecryptorFactoryBuilder(null).setProvider("BC").build(passphrase.toCharArray()));
+                pgpObjectFactory = new PGPObjectFactory(clear, null); // Pass null for the fingerprint calculator
+                object = pgpObjectFactory.nextObject();
+            }
+
+            if (object instanceof PGPCompressedData) {
+                PGPCompressedData compressedData = (PGPCompressedData) object;
+                pgpObjectFactory = new PGPObjectFactory(compressedData.getDataStream(), null); // Pass null for the fingerprint calculator
+                object = pgpObjectFactory.nextObject();
+            }
+
+            if (object instanceof PGPLiteralData) {
+                PGPLiteralData literalData = (PGPLiteralData) object;
+                InputStream literalDataStream = literalData.getInputStream();
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                while ((bytesRead = literalDataStream.read(buffer)) != -1) {
+                    outputStream.write(buffer, 0, bytesRead);
+                }
+            }
+        }
+    }
 
 	// Decrypt all files in a directory and move them to another directory
 	public static void decryptAndMoveFiles(String inputDirectory, String outputDirectory,
