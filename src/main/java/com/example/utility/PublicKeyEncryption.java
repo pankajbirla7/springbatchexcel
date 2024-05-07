@@ -163,7 +163,9 @@ public class PublicKeyEncryption {
 
 	
 	public static void decryptFile(String inputFilePath, String outputFilePath, InputStream privateKeyInputStream, String passphrase) throws IOException, PGPException {
-        try (
+		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider()); // Register Bouncy Castle provider
+
+		try (
             InputStream inputStream = new BufferedInputStream(new FileInputStream(inputFilePath));
             OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(outputFilePath))
         ) {
