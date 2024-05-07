@@ -102,7 +102,7 @@ public class PublicKeyEncryption {
 	}
 
 	// Decrypt file using private key and passphrase
-/**	public static void decryptFile1(String inputFilePath, String outputFilePath, InputStream privateKeyInputStream,
+	public static void decryptFile1(String inputFilePath, String outputFilePath, InputStream privateKeyInputStream,
 			String passphrase) throws Exception {
 		try (
                 InputStream inputStream = new BufferedInputStream(new FileInputStream(inputFilePath));
@@ -137,8 +137,11 @@ public class PublicKeyEncryption {
                 if (object instanceof PGPEncryptedDataList) {
                     PGPEncryptedDataList encryptedDataList = (PGPEncryptedDataList) object;
                     for (Iterator<PGPEncryptedData> it = encryptedDataList.getEncryptedDataObjects(); it.hasNext(); ) {
-                        PGPEncryptedData encryptedData = it.next();
-                        InputStream clear = encryptedData.getDataStream(new JcePublicKeyDataDecryptorFactory(privateKey).setProvider("BC"));
+                   // 	PGPEncryptedDataList encryptedDataList = (PGPEncryptedDataList) object;
+                        PGPPublicKeyEncryptedData encryptedData = (PGPPublicKeyEncryptedData) encryptedDataList.get(0);
+                    //    InputStream clear = encryptedData.getDataStream(new JcePublicKeyDataDecryptorFactory(privateKey).setProvider("BC"));
+                        InputStream clear = encryptedData.getDataStream(new JcePublicKeyDataDecryptorFactoryBuilder().setProvider("BC").setProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider()).build(privateKey));
+                        
                         pgpObjectFactory = new PGPObjectFactory(clear, new JcaKeyFingerprintCalculator());
                         object = pgpObjectFactory.nextObject();
                         if (object instanceof PGPCompressedData) {
@@ -159,7 +162,7 @@ public class PublicKeyEncryption {
                 }
             }
         }
-    } **/
+    } 
 
 	
 	public static void decryptFile(String inputFilePath, String outputFilePath, InputStream privateKeyInputStream, String passphrase) throws IOException, PGPException {
@@ -212,7 +215,7 @@ public class PublicKeyEncryption {
 					if (file.isFile()) {
 						String inputFilePath = file.getAbsolutePath();
 						String outputFilePath = outputDirectory + File.separator + file.getName();
-						decryptFile(inputFilePath, outputFilePath, privateKeyInputStream, passphrase);
+						decryptFile1(inputFilePath, outputFilePath, privateKeyInputStream, passphrase);
 						System.out.println("File decrypted: " + file.getName());
 						file.delete(); // Delete the encrypted file after decryption
 					}
