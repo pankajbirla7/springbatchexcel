@@ -12,6 +12,7 @@ import java.security.SecureRandom;
 import java.security.Security;
 import java.util.Iterator;
 
+import org.apache.commons.io.FilenameUtils;
 import org.bouncycastle.bcpg.ArmoredOutputStream;
 import org.bouncycastle.openpgp.PGPCompressedData;
 import org.bouncycastle.openpgp.PGPCompressedDataGenerator;
@@ -184,7 +185,7 @@ public class PublicKeyEncryption {
 				for (File file : files) {
 					if (file.isFile()) {
 						String inputFilePath = file.getAbsolutePath();
-						String outputFilePath = outputDirectory + File.separator + file.getName();
+						String outputFilePath = outputDirectory + File.separator + FilenameUtils.removeExtension(file.getName()+".txt");
 						decryptFile(inputFilePath, outputFilePath, privateKeyInputStream, passphrase);
 						System.out.println("File decrypted: " + file.getName());
 					}
