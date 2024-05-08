@@ -72,10 +72,22 @@
 		<!-- https://mvnrepository.com/artifact/org.bouncycastle/bcprov-jdk18on -->
 		<!-- https://mvnrepository.com/artifact/org.bouncycastle/bcpg-jdk16 -->
 		<!-- https://mvnrepository.com/artifact/org.bouncycastle/bcpg-jdk15on -->
-		<dependency>
+		<!--<dependency>
 			<groupId>org.bouncycastle</groupId>
 			<artifactId>bcpg-jdk15on</artifactId>
 			<version>1.47</version>
+		</dependency>-->
+
+		<dependency>
+			<groupId>org.bouncycastle</groupId>
+			<artifactId>bcpg-jdk15on</artifactId>
+			<version>1.68</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.bouncycastle/bcprov-jdk15on -->
+		<dependency>
+			<groupId>org.bouncycastle</groupId>
+			<artifactId>bcprov-jdk15on</artifactId>
+			<version>1.68</version>
 		</dependency>
 
 
