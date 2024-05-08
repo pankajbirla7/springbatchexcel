@@ -46,7 +46,7 @@ public class JobRunner {
 	@Scheduled(cron = "0 0/20 * ? * *")
 	public void downloadFileAndDecrpt() throws Exception {
 		System.out.println("Batch Job 3 started ");
-		fileWriteService.generateFile();
+		fileWriteService.downloadAndDecrptFile();
 		
 	}
 }

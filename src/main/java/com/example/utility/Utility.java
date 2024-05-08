@@ -14,7 +14,7 @@ public class Utility {
 	public static void encryptAndUpload(String inputFilePath, String outputFilePath, String publicKeyPath, String passphrase, 
 			String host, int port, String username, String password, String privateKeyPath, String remoteDirectory) throws IOException, PGPException, JSchException {
         // Encrypt the file
-        PublicKeyEncryption.encryptFile(inputFilePath, outputFilePath, publicKeyPath, passphrase);
+        PublicKeyEncryption.encryptFile(inputFilePath, outputFilePath, publicKeyPath);
 
         // Upload the encrypted file to SFTP server
         try {
