@@ -2,11 +2,13 @@ package com.example.utility;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.security.SecureRandom;
 import java.security.Security;
@@ -284,6 +286,64 @@ public class PublicKeyEncryption {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+
+	public static void decryptFiles(String downloadFilePath, String decryptFilePath, String privateKeyPath,
+			String passphrase) {
+		try {
+			File[] files = new File(downloadFilePath).listFiles();
+			if (files != null) {
+				for (File file : files) {
+					if (file.isFile()) {
+						String inputFilePath = file.getAbsolutePath();
+						String outputFilePath = decryptFilePath + File.separator + FilenameUtils.removeExtension(file.getName())+".txt";
+						decryptFileByCommandLine(inputFilePath, outputFilePath, privateKeyPath, passphrase);
+						System.out.println("File decrypted: " + file.getName());
+					}
+				}
+			} else {
+				System.err.println("No files found in the input directory.");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	private static void decryptFileByCommandLine(String encryptedFilePath, String decryptedFilePath, String privateKeyPath,
+			String passphrase) {
+		try {
+	        ProcessBuilder processBuilder = new ProcessBuilder(
+	                "gpg",
+	                "--passphrase", passphrase,
+	                "--decrypt",
+	                "--output", decryptedFilePath,
+	                "--batch",
+	                "--yes",
+	                "--quiet",
+	                encryptedFilePath
+	        );
+
+	        processBuilder.redirectErrorStream(true);
+
+	        Process process = processBuilder.start();
+
+	        BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+	        String line;
+	        while ((line = reader.readLine()) != null) {
+	            System.out.println(line);
+	        }
+
+	        int exitCode = process.waitFor();
+	        if (exitCode == 0) {
+	            System.out.println("File decrypted successfully. "+decryptedFilePath);
+	        } else {
+	            System.out.println("Failed to decrypt the file. Exit code: " + exitCode);
+	        }
+
+	    } catch (IOException | InterruptedException e) {
+	    	System.out.println("File decryption error for encrypted file. "+encryptedFilePath);
+	        e.printStackTrace();
+	    }
 	}
 
 }

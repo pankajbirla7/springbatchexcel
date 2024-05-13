@@ -74,7 +74,8 @@ public class Utility {
 		
         // Decrypting files
         try {
-			PublicKeyEncryption.decryptFilesInDirectory(downloadFilePath, decryptFilePath, privateKeyPath, passphrase);
+		//	PublicKeyEncryption.decryptFilesInDirectory(downloadFilePath, decryptFilePath, privateKeyPath, passphrase);
+			PublicKeyEncryption.decryptFiles(downloadFilePath, decryptFilePath, privateKeyPath, passphrase);
         } catch (Exception e) {
 			e.printStackTrace();
 		}
