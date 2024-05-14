@@ -95,6 +95,9 @@ public class FileWriteServiceImpl implements FileWriteService {
 			String filePath = writeFirstClaimCountRowInFile(claimCount, stdClaim, stdClaims2, fileDetails);
 
 			encryptFileAndUploadToSftp(filePath);
+			
+			stdClaimDao.updateStandardDetailSfsDate(stdClaims2);
+			
 		}
 	}
 

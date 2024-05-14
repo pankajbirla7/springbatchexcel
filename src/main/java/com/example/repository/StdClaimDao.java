@@ -13,4 +13,6 @@ public interface StdClaimDao {
 	
 	public List<StdClaim> getClaimIds(Date dateEntered, int status);
 
+	void updateStandardDetailSfsDate(List<StdClaim> stdClaims2);
+
 }
