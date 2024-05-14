@@ -1,15 +1,11 @@
 package com.example.service;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
+import java.io.File;
 import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -26,19 +22,6 @@ import com.example.dto.VohDetails;
 import com.example.repository.SafeNetClaimDao;
 import com.example.repository.StdClaimDao;
 import com.example.utility.Utility;
-
-import org.bouncycastle.openpgp.*;
-import org.bouncycastle.openpgp.operator.jcajce.JcePublicKeyKeyEncryptionMethodGenerator;
-import org.bouncycastle.openpgp.operator.jcajce.JcePBESecretKeyDecryptorBuilder;
-import org.bouncycastle.openpgp.operator.jcajce.JcePGPDataEncryptorBuilder;
-import org.bouncycastle.openpgp.operator.jcajce.JcePublicKeyDataDecryptorFactoryBuilder;
-import com.jcraft.jsch.*;
-import java.io.*;
-import java.security.SecureRandom;
-import java.security.Security;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.Iterator;
 
 @Service
 public class FileWriteServiceImpl implements FileWriteService {
@@ -119,7 +102,6 @@ public class FileWriteServiceImpl implements FileWriteService {
 	
 	private void encryptFileAndUploadToSftp(String filePath) {
 		String inputFilePath = filePath;
-		File f = new File(filePath);
 		LocalDate today = LocalDate.now();
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMddyyyy");
 		String formattedDate = today.format(formatter);

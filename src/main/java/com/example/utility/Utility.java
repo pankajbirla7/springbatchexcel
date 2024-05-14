@@ -50,7 +50,6 @@ public class Utility {
 
     public static void moveFileToSFTP(String inputFilePath, String outputFilePath, String publicKeyPath, 
     		String passphrase, String host, int port, String username, String password, String privateKeyPath, String remoteDirectory) {
-
         try {
 			encryptAndUpload(inputFilePath, outputFilePath, publicKeyPath, passphrase, host, port, username, password, privateKeyPath, remoteDirectory);
 		} catch (Exception e) {
@@ -74,7 +73,6 @@ public class Utility {
 		
         // Decrypting files
         try {
-		//	PublicKeyEncryption.decryptFilesInDirectory(downloadFilePath, decryptFilePath, privateKeyPath, passphrase);
 			PublicKeyEncryption.decryptFiles(downloadFilePath, decryptFilePath, privateKeyPath, passphrase);
         } catch (Exception e) {
 			e.printStackTrace();
