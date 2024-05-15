@@ -36,17 +36,17 @@ public class JobRunner {
 		System.out.println("Batch Status: " + batchStatus);
 	}
 
-	@Scheduled(cron = "0 0/10 * ? * *")
+	@Scheduled(cron = "0 0/1 * ? * *")
 	public void prepareFile() throws Exception {
 		System.out.println("Batch Job 2 started ");
 		fileWriteService.generateFile();
 		
 	}
 	
-	@Scheduled(cron = "0 0/20 * ? * *")
+	@Scheduled(cron = "0 0/1 * ? * *")
 	public void downloadFileAndDecrpt() throws Exception {
 		System.out.println("Batch Job 3 started ");
-		fileWriteService.generateFile();
+		fileWriteService.downloadAndDecrptFile();
 		
 	}
 }
