@@ -1,80 +1,108 @@
 package com.example.utility;
 
+import com.example.repository.StdClaimDao;
+import com.example.service.StdClaimService;
 import com.jcraft.jsch.*;
 
 import org.bouncycastle.openpgp.PGPException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.io.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
 import java.util.Vector;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+@Component
 public class Utility {
 
-	///////////////////////////// Encrypt File and Upload File To SFTP server ///////////////////////////////
-	
-	public static void encryptAndUpload(String inputFilePath, String outputFilePath, String publicKeyPath, String passphrase, 
-			String host, int port, String username, String password, String privateKeyPath, String remoteDirectory) throws IOException, PGPException, JSchException {
-        // Encrypt the file
-        PublicKeyEncryption.encryptFile(inputFilePath, outputFilePath, publicKeyPath, passphrase);
+	@Autowired
+	StdClaimService stdClaimService;
 
-        // Upload the encrypted file to SFTP server
-        try {
+	///////////////////////////// Encrypt File and Upload File To SFTP server
+	///////////////////////////// ///////////////////////////////
+
+	public void encryptAndUpload(String inputFilePath, String outputFilePath, String publicKeyPath,
+			String passphrase, String host, int port, String username, String password, String privateKeyPath,
+			String remoteDirectory) throws IOException, PGPException, JSchException {
+		// Encrypt the file
+		PublicKeyEncryption.encryptFile(inputFilePath, outputFilePath, publicKeyPath, passphrase);
+
+		// Upload the encrypted file to SFTP server
+		try {
 			uploadFile(outputFilePath, host, port, username, password, passphrase, privateKeyPath, remoteDirectory);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-    }
+	}
 
-    // Upload file to SFTP server
-    public static void uploadFile(String localFilePath, String host, int port, String username, String password, String passphrase, 
-    		String privateKeyPath, String remoteDirectory) throws JSchException, SftpException, FileNotFoundException {
-        JSch jsch = new JSch();
-        jsch.addIdentity(privateKeyPath, passphrase);
+	// Upload file to SFTP server
+	public void uploadFile(String localFilePath, String host, int port, String username, String password,
+			String passphrase, String privateKeyPath, String remoteDirectory)
+			throws JSchException, SftpException, FileNotFoundException {
+		JSch jsch = new JSch();
+		jsch.addIdentity(privateKeyPath, passphrase);
 
-        Session session = jsch.getSession(username, host, port);
-        session.setPassword(password);
-        session.setConfig("StrictHostKeyChecking", "no");
-        session.connect();
+		Session session = jsch.getSession(username, host, port);
+		session.setPassword(password);
+		session.setConfig("StrictHostKeyChecking", "no");
+		session.connect();
 
-        ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
-        channelSftp.connect();
+		ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
+		channelSftp.connect();
 
-        channelSftp.cd(remoteDirectory);
+		channelSftp.cd(remoteDirectory);
 
-        channelSftp.put(new FileInputStream(localFilePath), new File(localFilePath).getName());
+		channelSftp.put(new FileInputStream(localFilePath), new File(localFilePath).getName());
 
-        channelSftp.disconnect();
-        session.disconnect();
+		channelSftp.disconnect();
+		session.disconnect();
 
-        System.out.println("File uploaded successfully.");
-    }
+		System.out.println("File uploaded successfully.");
+	}
 
-    public static void moveFileToSFTP(String inputFilePath, String outputFilePath, String publicKeyPath, 
-    		String passphrase, String host, int port, String username, String password, String privateKeyPath, String remoteDirectory) {
-        try {
-			encryptAndUpload(inputFilePath, outputFilePath, publicKeyPath, passphrase, host, port, username, password, privateKeyPath, remoteDirectory);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-    }
-    
-    /////////////////////////////// Download SFTP File And Decryopt ///////////////////////////////
-
-	public static void downloadFilesFromSftpAndDecrypt(String downloadFilePath, String decryptFilePath, 
-			String passphrase, String host, int port, String username, String password, String privateKeyPath, String remoteDirectory) {
+	public void moveFileToSFTP(String inputFilePath, String outputFilePath, String publicKeyPath,
+			String passphrase, String host, int port, String username, String password, String privateKeyPath,
+			String remoteDirectory) {
 		try {
-			downloadFiles(host, port, username, password, passphrase, privateKeyPath, downloadFilePath, remoteDirectory);
-			decryptFile(passphrase, privateKeyPath, downloadFilePath, decryptFilePath);
-		}catch (Exception e) {
+			encryptAndUpload(inputFilePath, outputFilePath, publicKeyPath, passphrase, host, port, username, password,
+					privateKeyPath, remoteDirectory);
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
-	private static void decryptFile(String passphrase, String privateKeyPath, String downloadFilePath, String decryptFilePath) {
-		
-        // Decrypting files
-        try {
-			PublicKeyEncryption.decryptFiles(downloadFilePath, decryptFilePath, privateKeyPath, passphrase);
-        } catch (Exception e) {
+	/////////////////////////////// Download SFTP File And Decryopt
+	/////////////////////////////// ///////////////////////////////
+
+	public void downloadFilesFromSftpAndDecrypt(String downloadFilePath, String decryptFilePath,
+			String passphrase, String host, int port, String username, String password, String privateKeyPath,
+			String remoteDirectory) {
+		try {
+			downloadFiles(host, port, username, password, passphrase, privateKeyPath, downloadFilePath,
+					remoteDirectory);
+			decryptFile(passphrase, privateKeyPath, downloadFilePath, decryptFilePath);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	private void decryptFile(String passphrase, String privateKeyPath, String downloadFilePath,
+			String decryptFilePath) {
+
+		// Decrypting files
+		try {
+			List<String> filePaths = PublicKeyEncryption.decryptFiles(downloadFilePath, decryptFilePath, privateKeyPath,
+					passphrase);
+			if(filePaths!=null && filePaths.size()>0) {
+				parseFilesAndSaveVoucherDetails(filePaths);
+			}
+
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
@@ -112,4 +140,67 @@ public class Utility {
 		}
 		System.out.println("All files downloaded successfully.");
 	}
+
+	public void parseFilesAndSaveVoucherDetails(List<String> outputFilePaths) {
+		for (String outputFilePath : outputFilePaths) {
+			Map<String, String> voucherDetailsAndStatusMap = new HashMap<>();
+			try {
+				File file = new File(outputFilePath);
+				Scanner scanner = new Scanner(file);
+
+				// Skip the first two lines (header rows)
+				scanner.nextLine(); // Skip first header row
+				scanner.nextLine(); // Skip second header row
+
+				while (scanner.hasNextLine()) {
+					String dataLine = scanner.nextLine();
+					String[] values = dataLine.trim().split("\\s+");
+
+					for (String value : values) {
+						System.out.print(value + " ");
+						String docNumber = values[3];
+						String error = values[7];
+						if (docNumber != null && docNumber.startsWith("1S")) {
+							if (voucherDetailsAndStatusMap.get(docNumber) != null) {
+								if (!voucherDetailsAndStatusMap.get(docNumber).equals("SUCCESS")
+										&& !voucherDetailsAndStatusMap.get(docNumber).equals("ERROR")) {
+									voucherDetailsAndStatusMap.put(docNumber, error);
+								}
+							} else {
+								voucherDetailsAndStatusMap.put(docNumber, error);
+							}
+						}
+					}
+					System.out.println();
+				}
+
+				scanner.close();
+
+			} catch (FileNotFoundException e) {
+				System.out.println("File not found: " + outputFilePath);
+				e.printStackTrace();
+			}
+			System.out.println("Voucher Details Map : " + voucherDetailsAndStatusMap);
+
+			stdClaimService.updateVoucherDetailsAndStatus(voucherDetailsAndStatusMap);
+		}
+	}
+
+	public static int getClaimIdFromVoucher(String voucher) {
+		int claimId = 0;
+		// Define the regular expression pattern
+		Pattern pattern = Pattern.compile("^1S0*([1-9][0-9]*)");
+
+		// Match the pattern against the input string
+		Matcher matcher = pattern.matcher(voucher);
+
+		// Check if the pattern matches
+		if (matcher.find()) {
+			// Extract the matched group
+			String extracted = matcher.group(1);
+			claimId = Integer.parseInt(extracted);
+		}
+		return claimId;
+	}
+
 }

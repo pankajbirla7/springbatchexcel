@@ -78,13 +78,18 @@ public class FileWriteServiceImpl implements FileWriteService {
 	private String sftpRemoteDownloadDirectory;
 	
 	
-
+	@Autowired
+	Utility utility;
+	
+	@Autowired
+	StdClaimService stdClaimService;
+	
 	@Override
 	public void generateFile() {
 
 		List<StdClaim> stdClaims = stdClaimDao.getStdClaimDetails(Constants.NEW);
 		System.out.println("total stdClaimList " + stdClaims.size());
-
+		
 		for (StdClaim stdClaim : stdClaims) {
 			FileDetails fileDetails = fileDao.getFileDetailsByFileID(stdClaim.getFileid());
 			int claimCount = stdClaimDao.getClaimCountByDateEntered(fileDetails.getSubmitDate(), Constants.NEW);
@@ -113,7 +118,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 		String outputFilePath = encryptedFileDirectory + encryptedFileName + ".gpg";
        
         
-        Utility.moveFileToSFTP(inputFilePath, outputFilePath, publicKeyPath, passphrase, 
+        utility.moveFileToSFTP(inputFilePath, outputFilePath, publicKeyPath, passphrase, 
         		sftpHost, port, sftpUserName, sftpPassword, privateKeyPath, sftpRemoteUploadDirectory);
         
 	}
@@ -123,7 +128,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 	@Override
 	public void downloadAndDecrptFile() {
 
-		Utility.downloadFilesFromSftpAndDecrypt(downloadSftpFilePath, decryptedFileDirectory,
+		utility.downloadFilesFromSftpAndDecrypt(downloadSftpFilePath, decryptedFileDirectory,
 				passphrase, sftpHost, port, sftpUserName, sftpPassword, privateKeyPath, sftpRemoteDownloadDirectory);
 	}
 	
