@@ -5,6 +5,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.poi.util.StringUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -63,6 +64,21 @@ public class StdClaimDaoImpl implements StdClaimDao {
 			stdClaims.add(stdClaim);
 		}
 		return stdClaims;
+	}
+
+	@Override
+	public void updateStandardDetailSfsDate(List<StdClaim> stdList) {
+		StringBuilder idList = new StringBuilder();
+        for (StdClaim stdClaim : stdList) {
+            idList.append(stdClaim.getId()).append(",");
+        }
+        idList.deleteCharAt(idList.length() - 1); // Remove the last comma
+
+        // Construct the SQL query
+        String updateQuery = "UPDATE std_claims SET DateToSFS = CURDATE() WHERE id IN (" + idList.toString() + ")";
+        
+        jdbcTemplate.update(updateQuery);
+
 	}
 
 }
