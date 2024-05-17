@@ -15,6 +15,7 @@ import javax.sql.DataSource;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -105,7 +106,7 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 				
 				closeWorkbook();
 			} catch (Exception e) {
-				
+				e.printStackTrace();
 				try {
 					EmailUtility.sendEmail("File processing failed for file "+resource.getFile().getAbsolutePath(), Constant.FAILED);
 				}catch(Exception ex) {
@@ -135,13 +136,28 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 					break;
 				}
 				colCount++;
-				if (cell.getCellType() == CellType.NUMERIC || cell.getCellType() == CellType.STRING) {
-					cell.setCellType(CellType.STRING);
+				if (cell.getCellType() == CellType.NUMERIC && org.apache.poi.ss.usermodel.DateUtil.isCellDateFormatted(cell)) {
+					
+				}else {
+					if (cell.getCellType() == CellType.NUMERIC || cell.getCellType() == CellType.STRING) {
+						cell.setCellType(CellType.STRING);
+					}
 				}
 
 				switch (cell.getCellType()) {
 				case NUMERIC:
+					String cellValue = "";
+					DataFormatter formatter = new DataFormatter();
+					String formattedValue = formatter.formatCellValue(cell);
+					if (org.apache.poi.ss.usermodel.DateUtil.isCellDateFormatted(cell)) {
+						cellValue = formattedValue;
+                    } else {
+                    	cellValue = String.valueOf(cell.getNumericCellValue());
+                    }
 					String intValue = cell.getNumericCellValue() + "";
+					if(!cellValue.isEmpty()) {
+						intValue = cellValue;
+					}
 					System.out.print(intValue + "                 ");
 					rowMap.put(colCount + "", intValue + "");
 					break;
