@@ -9,7 +9,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.SecureRandom;
 import java.security.Security;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 import org.apache.commons.io.FilenameUtils;
 import org.bouncycastle.bcpg.ArmoredOutputStream;
@@ -27,9 +29,11 @@ import org.bouncycastle.openpgp.PGPUtil;
 import org.bouncycastle.openpgp.bc.BcPGPPublicKeyRingCollection;
 import org.bouncycastle.openpgp.operator.jcajce.JcePGPDataEncryptorBuilder;
 import org.bouncycastle.openpgp.operator.jcajce.JcePublicKeyKeyEncryptionMethodGenerator;
+import org.springframework.stereotype.Component;
 
+@Component
 public class PublicKeyEncryption {
-
+	
 	public static void encryptFile(String inputFilePath, String outputFilePath, String publicKeyPath, String passphrase)
 			throws IOException, PGPException {
 		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider()); // Register Bouncy Castle
@@ -83,8 +87,9 @@ public class PublicKeyEncryption {
 		}
 	}
 
-	public static void decryptFiles(String downloadFilePath, String decryptFilePath, String privateKeyPath,
+	public static List<String> decryptFiles(String downloadFilePath, String decryptFilePath, String privateKeyPath,
 			String passphrase) {
+		List<String> decryptedFiles = new ArrayList<>();
 		try {
 			File[] files = new File(downloadFilePath).listFiles();
 			if (files != null) {
@@ -95,6 +100,7 @@ public class PublicKeyEncryption {
 								+ FilenameUtils.removeExtension(file.getName()) + ".txt";
 						decryptFileByCommandLine(inputFilePath, outputFilePath, privateKeyPath, passphrase);
 						System.out.println("File decrypted: " + file.getName());
+						decryptedFiles.add(outputFilePath);
 					}
 				}
 			} else {
@@ -103,6 +109,7 @@ public class PublicKeyEncryption {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		return decryptedFiles;
 	}
 
 	private static void decryptFileByCommandLine(String encryptedFilePath, String decryptedFilePath,
