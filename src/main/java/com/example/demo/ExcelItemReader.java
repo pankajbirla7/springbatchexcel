@@ -5,7 +5,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -16,6 +19,7 @@ import javax.sql.DataSource;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -147,17 +151,30 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 				switch (cell.getCellType()) {
 				case NUMERIC:
 					String cellValue = "";
-					DataFormatter formatter = new DataFormatter();
-					String formattedValue = formatter.formatCellValue(cell);
 					if (org.apache.poi.ss.usermodel.DateUtil.isCellDateFormatted(cell)) {
-						cellValue = formattedValue;
-                    } else {
-                    	cellValue = String.valueOf(cell.getNumericCellValue());
-                    }
-					String intValue = cell.getNumericCellValue() + "";
-					if(!cellValue.isEmpty()) {
-						intValue = cellValue;
+						DataFormatter formatter = new DataFormatter();
+						cellValue = formatter.formatCellValue(cell);
+						DateFormat dateFormatter = new SimpleDateFormat("MMddyyyy");
+						Date date = cell.getDateCellValue();
+						String dateStr1 = dateFormatter.format(date);
+						if (date.getYear() + "".length() != 4) {
+							String dateValue = cellValue.replaceAll("/", "");
+							dateValue = dateValue.replaceAll("-", "");
+							if (dateValue.length() != 8 && dateStr1.length() !=8 && !dateStr1.contains("/") && !dateStr1.contains("-")) {
+								cell.setCellType(CellType.STRING);
+								cellValue = cell.getStringCellValue();
+							} else {
+								String dateStr = dateFormatter.format(date);
+								cellValue = dateStr;
+							}
+						} else {
+							String dateStr = dateFormatter.format(date);
+							cellValue = dateStr;
+						}
+					} else {
+						cellValue = String.valueOf(cell.getNumericCellValue());
 					}
+					String intValue = cellValue;
 					System.out.print(intValue + "                 ");
 					rowMap.put(colCount + "", intValue + "");
 					break;
