@@ -30,7 +30,7 @@ public class FileDaoImpl implements FileDao {
 			Date submDate = (Date) row.get("SubmitDate");
 			fileDetails.setSubmitDate(submDate);
 			fileDetails.setId(Long.valueOf(id));
-			fileDetails.setAgencyFin(String.valueOf(agencyFin));
+			fileDetails.setAgencyFein(String.valueOf(agencyFin));
 		}
 		return fileDetails;
 	}

@@ -6,7 +6,7 @@ public class FileDetails {
 
 	private Long id;
 
-	private String agencyFin;
+	private String agencyFein;
 	
 	private String fileName;
 	
@@ -26,12 +26,13 @@ public class FileDetails {
 		this.id = id;
 	}
 
-	public String getAgencyFin() {
-		return agencyFin;
+
+	public String getAgencyFein() {
+		return agencyFein;
 	}
 
-	public void setAgencyFin(String agencyFin) {
-		this.agencyFin = agencyFin;
+	public void setAgencyFein(String agencyFein) {
+		this.agencyFein = agencyFein;
 	}
 
 	public String getFileName() {

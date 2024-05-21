@@ -9,10 +9,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.SecureRandom;
 import java.security.Security;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-
+import java.util.ArrayList;
 import org.apache.commons.io.FilenameUtils;
 import org.bouncycastle.bcpg.ArmoredOutputStream;
 import org.bouncycastle.openpgp.PGPCompressedData;
@@ -29,15 +28,14 @@ import org.bouncycastle.openpgp.PGPUtil;
 import org.bouncycastle.openpgp.bc.BcPGPPublicKeyRingCollection;
 import org.bouncycastle.openpgp.operator.jcajce.JcePGPDataEncryptorBuilder;
 import org.bouncycastle.openpgp.operator.jcajce.JcePublicKeyKeyEncryptionMethodGenerator;
-import org.springframework.stereotype.Component;
 
-@Component
 public class PublicKeyEncryption {
-	
+
 	public static void encryptFile(String inputFilePath, String outputFilePath, String publicKeyPath, String passphrase)
 			throws IOException, PGPException {
 		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider()); // Register Bouncy Castle
 																						// provider
+
 		try (OutputStream outputStream = new FileOutputStream(outputFilePath)) {
 			PGPPublicKey publicKey = readPublicKey(publicKeyPath);
 
@@ -114,8 +112,8 @@ public class PublicKeyEncryption {
 
 	private static void decryptFileByCommandLine(String encryptedFilePath, String decryptedFilePath,
 			String privateKeyPath, String passphrase) {
-		String[] command = { "gpg", "--batch", "--quiet", "--pinentry-mode", "loopback", "--passphrase",
-				passphrase, "--decrypt", encryptedFilePath};
+		String[] command = { "gpg", "--batch", "--quiet", "--pinentry-mode", "loopback", "--passphrase", passphrase,
+				"--decrypt", encryptedFilePath };
 
 		try {
 			ProcessBuilder pb = new ProcessBuilder(command);

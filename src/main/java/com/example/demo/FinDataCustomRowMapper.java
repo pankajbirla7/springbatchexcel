@@ -31,7 +31,7 @@ public class FinDataCustomRowMapper implements RowMapper<MyDataObject> {
         }
 
         MyDataObject dataObject = new MyDataObject();
-        dataObject.setFin(rs.getCurrentRow()[0]);
+        dataObject.setFein(rs.getCurrentRow()[0]);
         dataObject.setCin(rs.getCurrentRow()[1]);
         //dataObject.setDateEntered(formattedDateString);
         dataObject.setNdc(rs.getCurrentRow()[3]);

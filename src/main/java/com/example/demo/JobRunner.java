@@ -27,26 +27,26 @@ public class JobRunner {
 		this.jobLauncher = jobLauncher;
 	}
 
-	@Scheduled(cron = "0 0/10 * ? * *")
+	@Scheduled(cron = "0 0/2 * ? * *")
 	public void run() throws Exception {
 		JobParameters jobParameters = new JobParametersBuilder().addLong("time", System.currentTimeMillis())
 				.toJobParameters();
 		JobExecution jobExecution = jobLauncher.run(importUserJob, jobParameters);
 		BatchStatus batchStatus = jobExecution.getStatus();
-		System.out.println("Batch Status: " + batchStatus);
+	//	System.out.println("Batch Status: " + batchStatus);
 	}
 
 	@Scheduled(cron = "0 0/1 * ? * *")
 	public void prepareFile() throws Exception {
 		System.out.println("Batch Job 2 started ");
-		fileWriteService.generateFile();
+	//	fileWriteService.generateFile();
 		
 	}
 	
 	@Scheduled(cron = "0 0/1 * ? * *")
 	public void downloadFileAndDecrpt() throws Exception {
 		System.out.println("Batch Job 3 started ");
-		fileWriteService.downloadAndDecrptFile();
+	//	fileWriteService.downloadAndDecrptFile();
 		
 	}
 }
