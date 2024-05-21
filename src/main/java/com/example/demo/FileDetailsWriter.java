@@ -37,7 +37,7 @@ public class FileDetailsWriter {
 						@Override
 						public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
 							PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-							ps.setInt(1, Integer.parseInt(item.getAgencyFin()));
+							ps.setString(1, item.getAgencyFin());
 							ps.setString(2, item.getFileName());
 							ps.setString(3, item.getSubmittedByEmail());
 							return ps;
