@@ -61,6 +61,16 @@ public class Utility {
 				// Uploading the encrypted file
 				FileInputStream encryptedFileInputStream = new FileInputStream(file);
 				channelSftp.put(encryptedFileInputStream, remoteDirectory + file.getName());
+				
+				// Change to the target directory
+	            channelSftp.cd(remoteDirectory);
+
+	            // Upload file
+	            try (FileInputStream fis = new FileInputStream(file)) {
+	                channelSftp.put(fis, file.getName());
+	            }
+
+	            System.out.println("File uploaded successfully to " + localFilePath);
 
 				// Disconnecting the channel and session
 				channelSftp.disconnect();
