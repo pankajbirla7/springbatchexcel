@@ -208,27 +208,22 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 		
 		if(items!=null && items.size()>0) {
 			try {
-						
-				Chunk<MyDataObject> fileWriterChunk = new Chunk<>(items);
-				itemWriter.write(fileWriterChunk);
-				
-				moveFilesToArchiveFolder(items.get(0).getFin(), resource);
-			} catch (Exception e) {
-				try {
-					EmailUtility.sendEmail("File moving to archive failed for file - "+resource.getFile().getAbsolutePath(), Constant.FAILED);
-				}catch(Exception ex) {
-					ex.printStackTrace();
+				String agencyName = getAgencyName(items.get(0).getFin());
+				if(agencyName!=null) {
+					Chunk<MyDataObject> fileWriterChunk = new Chunk<>(items);
+					itemWriter.write(fileWriterChunk);
+					
+					moveFilesToArchiveFolder(items.get(0).getFin(), resource, agencyName);
+					
+					EmailUtility.sendEmail("File processing success for file - "+resource.getFile().getAbsolutePath(), Constant.SUCCESS);
+				}else {
+					EmailUtility.sendEmail("Agency Name not found for the fein :"+ items.get(0).getFin() +" and failed for file - "+resource.getFile().getAbsolutePath(), Constant.FAILED);
 				}
-				
+			} catch (Exception e) {
+				EmailUtility.sendEmail("File processing failed for file - "+resource.getFile().getAbsolutePath(), Constant.FAILED);
 				e.printStackTrace();
 			}
 		}
-		try {
-			EmailUtility.sendEmail("File processing success for file - "+resource.getFile().getAbsolutePath(), Constant.SUCCESS);
-		}catch(Exception ex) {
-			ex.printStackTrace();
-		}
-		
 	}
 
 	private int insertFileDetail(Resource resource, String agencyFein) throws Exception {
@@ -247,9 +242,8 @@ public class ExcelItemReader implements ItemReader<MyDataObject> {
 		return fileId;
 	}
 
-	private void moveFilesToArchiveFolder(String fin, Resource resource) {
+	private void moveFilesToArchiveFolder(String fin, Resource resource, String agencyName) {
 		
-		String agencyName = getAgencyName(fin);
 		System.out.println("Agency Name = "+agencyName);
 		if(agencyName!=null) {
 			try {
