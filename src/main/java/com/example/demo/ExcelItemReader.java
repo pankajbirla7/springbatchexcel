@@ -218,14 +218,14 @@ public class ExcelItemReader implements ItemReader {
 					moveFilesToArchiveFolder(items.get(0).getFein(), resource, agencyName);
 
 					EmailUtility.sendEmail("File processing success for file - " + resource.getFile().getAbsolutePath(),
-							Constant.SUCCESS);
+							Constants.SUCCESSS);
 				} else {
 					EmailUtility.sendEmail("Agency Name not found for the fein :" + items.get(0).getFein()
-							+ " and failed for file - " + resource.getFile().getAbsolutePath(), Constant.FAILED);
+							+ " and failed for file - " + resource.getFile().getAbsolutePath(), Constants.FAILED);
 				}
 			} catch (Exception e) {
 				EmailUtility.sendEmail("File processing failed for file - " + resource.getFile().getAbsolutePath(),
-						Constant.FAILED);
+						Constants.FAILED);
 				e.printStackTrace();
 			}
 		}
@@ -278,7 +278,7 @@ public class ExcelItemReader implements ItemReader {
 				System.err.println("Error moving the file: " + e.getMessage());
 				try {
 					EmailUtility.sendEmail("File moving to archive folder got failed for file - "
-							+ resource.getFile().getAbsolutePath(), Constant.FAILED);
+							+ resource.getFile().getAbsolutePath(), Constants.FAILED);
 				} catch (Exception ex) {
 					ex.printStackTrace();
 				}
