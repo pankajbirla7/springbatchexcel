@@ -210,26 +210,24 @@ public class ExcelItemReader implements ItemReader {
 
 		if (items != null && items.size() > 0) {
 			try {
+				String agencyName = getAgencyName(items.get(0).getFein());
+				if (agencyName != null) {
+					Chunk<MyDataObject> fileWriterChunk = new Chunk<>(items);
+					itemWriter.write(fileWriterChunk);
 
-				Chunk<MyDataObject> fileWriterChunk = new Chunk<>(items);
-				itemWriter.write(fileWriterChunk);
+					moveFilesToArchiveFolder(items.get(0).getFein(), resource, agencyName);
 
-				moveFilesToArchiveFolder(items.get(0).getFein(), resource);
-			} catch (Exception e) {
-
-				try {
-					EmailUtility.sendEmail("File moving to archive failed" + resource.getFile().getAbsolutePath(),
-							Constants.FAILED);
-				} catch (Exception ex) {
-					ex.printStackTrace();
+					EmailUtility.sendEmail("File processing success for file - " + resource.getFile().getAbsolutePath(),
+							Constants.SUCCESSS);
+				} else {
+					EmailUtility.sendEmail("Agency Name not found for the fein :" + items.get(0).getFein()
+							+ " and failed for file - " + resource.getFile().getAbsolutePath(), Constants.FAILED);
 				}
+			} catch (Exception e) {
+				EmailUtility.sendEmail("File processing failed for file - " + resource.getFile().getAbsolutePath(),
+						Constants.FAILED);
+				e.printStackTrace();
 			}
-		}
-		try {
-			EmailUtility.sendEmail("File processing success" + resource.getFile().getAbsolutePath(),
-					Constants.SUCCESSS);
-		} catch (Exception ex) {
-			ex.printStackTrace();
 		}
 
 	}
@@ -237,7 +235,11 @@ public class ExcelItemReader implements ItemReader {
 	private int insertFileDetail(Resource resource, String agencyFein) throws Exception {
 		List<FileDetails> fileDetailsList = new ArrayList<>();
 		FileDetails fileDetails = new FileDetails();
-		fileDetails.setAgencyFein(agencyFein);
+		String fein = agencyFein;
+		if (agencyFein.contains("-")) {
+			fein = agencyFein.split("-")[1];
+		}
+		fileDetails.setAgencyFein(fein);
 		fileDetails.setFileName(resource.getFilename());
 		fileDetails.setSubmittedByEmail("abc@gmail.com");
 		java.sql.Date d = java.sql.Date.valueOf("2024-03-26");
@@ -250,9 +252,8 @@ public class ExcelItemReader implements ItemReader {
 		return fileId;
 	}
 
-	private void moveFilesToArchiveFolder(String fin, Resource resource) {
+	private void moveFilesToArchiveFolder(String fin, Resource resource, String agencyName) {
 
-		String agencyName = getAgencyName(fin);
 		System.out.println("Agency Name = " + agencyName);
 		if (agencyName != null) {
 			try {
@@ -276,9 +277,8 @@ public class ExcelItemReader implements ItemReader {
 			} catch (Exception e) {
 				System.err.println("Error moving the file: " + e.getMessage());
 				try {
-					EmailUtility.sendEmail(
-							"File moving to archive folder got failed" + resource.getFile().getAbsolutePath(),
-							Constants.FAILED);
+					EmailUtility.sendEmail("File moving to archive folder got failed for file - "
+							+ resource.getFile().getAbsolutePath(), Constants.FAILED);
 				} catch (Exception ex) {
 					ex.printStackTrace();
 				}
