@@ -1,6 +1,5 @@
 package com.example.utility;
 
-import com.example.repository.StdClaimDao;
 import com.example.service.StdClaimService;
 import com.jcraft.jsch.*;
 
@@ -23,14 +22,13 @@ public class Utility {
 	@Autowired
 	StdClaimService stdClaimService;
 
-	///////////////////////////// Encrypt File and Upload File To SFTP server
-	///////////////////////////// ///////////////////////////////
+///////////////////////////// Encrypt File and Upload File To SFTP server //////////////////////////// 
 
-	public void encryptAndUpload(String inputFilePath, String outputFilePath, String publicKeyPath,
-			String passphrase, String host, int port, String username, String password, String privateKeyPath,
-			String remoteDirectory) throws IOException, PGPException, JSchException {
+	public void encryptAndUpload(String inputFilePath, String outputFilePath, String publicKeyPath, String passphrase,
+			String host, int port, String username, String password, String privateKeyPath, String remoteDirectory)
+			throws IOException, PGPException, JSchException {
 		// Encrypt the file
-		PublicKeyEncryption.encryptFile(inputFilePath, outputFilePath, publicKeyPath, passphrase);
+		PublicKeyEncryption.encryptFile(inputFilePath, outputFilePath, publicKeyPath);
 
 		// Upload the encrypted file to SFTP server
 		try {
@@ -40,7 +38,7 @@ public class Utility {
 		}
 	}
 
-	// Upload file to SFTP server
+// Upload file to SFTP server
 		public void uploadFile(String localFilePath, String host, int port, String username, String password,
 				String passphrase, String privateKeyPath, String remoteDirectory)
 				throws JSchException, SftpException, FileNotFoundException {
@@ -87,9 +85,8 @@ public class Utility {
 			}
 		}
 
-	public void moveFileToSFTP(String inputFilePath, String outputFilePath, String publicKeyPath,
-			String passphrase, String host, int port, String username, String password, String privateKeyPath,
-			String remoteDirectory) {
+	public void moveFileToSFTP(String inputFilePath, String outputFilePath, String publicKeyPath, String passphrase,
+			String host, int port, String username, String password, String privateKeyPath, String remoteDirectory) {
 		try {
 			encryptAndUpload(inputFilePath, outputFilePath, publicKeyPath, passphrase, host, port, username, password,
 					privateKeyPath, remoteDirectory);
@@ -98,12 +95,10 @@ public class Utility {
 		}
 	}
 
-	/////////////////////////////// Download SFTP File And Decryopt
-	/////////////////////////////// ///////////////////////////////
+/////////////////////////////// Download SFTP File And Decryopt /////////////////////////////// 
 
-	public void downloadFilesFromSftpAndDecrypt(String downloadFilePath, String decryptFilePath,
-			String passphrase, String host, int port, String username, String password, String privateKeyPath,
-			String remoteDirectory) {
+	public void downloadFilesFromSftpAndDecrypt(String downloadFilePath, String decryptFilePath, String passphrase,
+			String host, int port, String username, String password, String privateKeyPath, String remoteDirectory) {
 		try {
 			downloadFiles(host, port, username, password, passphrase, privateKeyPath, downloadFilePath,
 					remoteDirectory);
@@ -120,7 +115,7 @@ public class Utility {
 		try {
 			List<String> filePaths = PublicKeyEncryption.decryptFiles(downloadFilePath, decryptFilePath, privateKeyPath,
 					passphrase);
-			if(filePaths!=null && filePaths.size()>0) {
+			if (filePaths != null && filePaths.size() > 0) {
 				parseFilesAndSaveVoucherDetails(filePaths);
 			}
 
@@ -224,5 +219,4 @@ public class Utility {
 		}
 		return claimId;
 	}
-
 }

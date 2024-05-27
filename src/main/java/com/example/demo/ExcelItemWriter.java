@@ -19,10 +19,10 @@ public class ExcelItemWriter implements ItemWriter<MyDataObject> {
 		System.out.println("Total items to write in db : " + chunk.size());
 		if (chunk != null && chunk.getItems().size() > 0) {
 			for (MyDataObject item : chunk.getItems()) {
-				if(item.getFin()!=null) {
+				if(item.getFein()!=null) {
 					System.out.println("Writing item: " + item);
 					String sql = "INSERT INTO Raw_Claims (FIN, CIN, dfilled, NDC, File_id, status_cd, DateEntered) VALUES (?, ?, ?, ?, ?, ?, CURRENT_DATE())";
-					jdbcTemplate.update(sql, item.getFin(), item.getCin(), item.getDfilled(), item.getNdc(), item.getFileId(), item.getStatusCode());
+					jdbcTemplate.update(sql, item.getFein(), item.getCin(), item.getDfilled(), item.getNdc(), item.getFileId(), item.getStatusCode());
 				}else {
 					continue;
 				}

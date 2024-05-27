@@ -1,7 +1,6 @@
 package com.example.service;
 
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.FileWriter;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -19,7 +18,6 @@ import com.example.demo.Constants;
 import com.example.demo.FileDetails;
 import com.example.dto.StdClaim;
 import com.example.dto.VohDetails;
-import com.example.repository.SafeNetClaimDao;
 import com.example.repository.StdClaimDao;
 import com.example.utility.Utility;
 
@@ -33,14 +31,17 @@ public class FileWriteServiceImpl implements FileWriteService {
 	StdClaimDao stdClaimDao;
 
 	@Autowired
-	SafeNetClaimDao safeNetClaimDao;
+	FileDao fileDao;
 
 	@Autowired
-	FileDao fileDao;
+	Utility utility;
+
+	@Autowired
+	StdClaimService stdClaimService;
 
 	@Value("${stg.file.path}")
 	private String stgFileDirectory;
-	
+
 	@Value("${encrypted.file.path}")
 	private String encryptedFileDirectory;
 
@@ -67,29 +68,21 @@ public class FileWriteServiceImpl implements FileWriteService {
 
 	@Value("${passphrase}")
 	private String passphrase;
-	
-	@Value("${sftp.port}")
-	private int port;
+
+	private int port = 22;
 
 	@Value("${sftp.remotedirectory.upload}")
 	private String sftpRemoteUploadDirectory;
-	
+
 	@Value("${sftp.remotedirectory.download}")
 	private String sftpRemoteDownloadDirectory;
-	
-	
-	@Autowired
-	Utility utility;
-	
-	@Autowired
-	StdClaimService stdClaimService;
-	
+
 	@Override
 	public void generateFile() {
 
 		List<StdClaim> stdClaims = stdClaimDao.getStdClaimDetails(Constants.NEW);
 		System.out.println("total stdClaimList " + stdClaims.size());
-		
+
 		for (StdClaim stdClaim : stdClaims) {
 			FileDetails fileDetails = fileDao.getFileDetailsByFileID(stdClaim.getFileid());
 			int claimCount = stdClaimDao.getClaimCountByDateEntered(fileDetails.getSubmitDate(), Constants.NEW);
@@ -100,40 +93,32 @@ public class FileWriteServiceImpl implements FileWriteService {
 			String filePath = writeFirstClaimCountRowInFile(claimCount, stdClaim, stdClaims2, fileDetails);
 
 			encryptFileAndUploadToSftp(filePath);
-			
 			stdClaimDao.updateStandardDetailSfsDate(stdClaims2);
-			
+			break;
 		}
 	}
+///////////////////////////////Encrypt and Upload File/////////////////////////////////////
 
-	///////////////////////////////Encrypt and Upload File/////////////////////////////////////
-	
 	private void encryptFileAndUploadToSftp(String filePath) {
 		String inputFilePath = filePath;
 		LocalDate today = LocalDate.now();
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMddyyyy");
 		String formattedDate = today.format(formatter);
-		
-		String encryptedFileName = "SN12969_"+formattedDate;
-		String outputFilePath = encryptedFileDirectory + encryptedFileName + ".gpg";
-       
-        
-        utility.moveFileToSFTP(inputFilePath, outputFilePath, publicKeyPath, passphrase, 
-        		sftpHost, port, sftpUserName, sftpPassword, privateKeyPath, sftpRemoteUploadDirectory);
-        
+
+		String encryptedFileName = "SN12969_" + formattedDate;
+		String outputFilePath = encryptedFileDirectory + "\\" + encryptedFileName + ".gpg";
+
+		utility.moveFileToSFTP(inputFilePath, outputFilePath, publicKeyPath, passphrase, sftpHost, port, sftpUserName,
+				sftpPassword, privateKeyPath, sftpRemoteUploadDirectory);
 	}
-	
-	///////////////////////////////Download ANd Decrypt File/////////////////////////////////
-	
+
+///////////////////////////////Download ANd Decrypt File/////////////////////////////////
 	@Override
 	public void downloadAndDecrptFile() {
 
-		utility.downloadFilesFromSftpAndDecrypt(downloadSftpFilePath, decryptedFileDirectory,
-				passphrase, sftpHost, port, sftpUserName, sftpPassword, privateKeyPath, sftpRemoteDownloadDirectory);
+		utility.downloadFilesFromSftpAndDecrypt(downloadSftpFilePath, decryptedFileDirectory, passphrase, sftpHost,
+				port, sftpUserName, sftpPassword, privateKeyPath, sftpRemoteDownloadDirectory);
 	}
-	
-	
-	/////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	private String writeFirstClaimCountRowInFile(int claimCount, StdClaim stdClaim1, List<StdClaim> stdClaims2,
 			FileDetails fileDetails) {
@@ -148,13 +133,13 @@ public class FileWriteServiceImpl implements FileWriteService {
 				+ String.format("%05d", 0) + String.format("%010d", 0) + String.format("%05d", 0)
 				+ String.format("%18s", " ") + "CTL" + String.format("%2s", " ") + String.format("%1$-924s", " ");
 
-		String filePath = stgFileDirectory + "\\" + fileDetails.getAgencyFin() + ".txt"; // Change this to your desired
+		String filePath = stgFileDirectory + "\\" + fileDetails.getAgencyFein() + ".txt"; // Change this to your desired
 																							// file path
-
 		// Write data to the file
 		try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
 			writer.write(firstRow);
-			System.out.println("FIrst Row Data written to file successfully.");
+			System.out.println("First Row Data written to file successfully.");
+			int count = 0;
 
 			int dohTransCtrlNo = 0;
 			for (StdClaim stdClaim : stdClaims2) {
@@ -180,12 +165,13 @@ public class FileWriteServiceImpl implements FileWriteService {
 				dohTransCtrlNo++; // Increment dohTransCtrlNo
 
 				String secondRow = String.format("%5s", ssid) + "H" + String.format("%-9s", ctlNum)
-						+ String.format("%05d", 0) + // This ensures leading zeros for the integer
-						String.format("%-10s", currClaimId) + String.format("%3s", "VOU")
-						+ String.format("%05d", docCtrlCount + 1) + // This ensures leading zeros for the integer
-						String.format("%010d", dohTransCtrlNo) + // This ensures leading zeros for the integer
-						String.format("%05d", 0) + // This ensures leading zeros for the integer
-						String.format("%18s", " ") + "DOH" + String.format("%2s", " ") + String.format("%1$-924s", " ");
+						+ String.format("%05d", 0) // This ensures leading zeros for the integer
+						+ String.format("%-10s", currClaimId) + String.format("%3s", "VOU")
+						+ String.format("%05d", docCtrlCount + 1) // This ensures leading zeros for the integer
+						+ String.format("%010d", dohTransCtrlNo) // This ensures leading zeros for the integer
+						+ String.format("%05d", 0) // This ensures leading zeros for the integer
+						+ String.format("%18s", " ") + "DOH" + String.format("%2s", " ")
+						+ String.format("%1$-924s", " ");
 
 				writer.newLine();
 				writer.write(secondRow);
@@ -202,13 +188,13 @@ public class FileWriteServiceImpl implements FileWriteService {
 				String invoiceNumber = vohDetails.getInvoiceNo();
 				float claimTotal = vohDetails.getClaimTotal().floatValue();
 				String sfsVendorId = vohDetails.getSFSVendorId();
-				String recvDate = vohDetails.getDateRecieved();
+				String recvDate = vohDetails.getDateReceived();
 				String obligDate = vohDetails.getDfilled();
 				String intElig = vohDetails.getInterestEligible();
 				String paymentDate = vohDetails.getPaymentDate();
-
 				String invoiceDateStr = invoiceDate != null ? invoiceDate.replaceAll("[^\\d]", "") : "";
 				String invoiceDateUpdated = "";
+
 				if (!invoiceDateStr.isEmpty()) {
 					invoiceDateUpdated = String.format("%08d", Integer.parseInt(invoiceDateStr));
 				}
@@ -235,62 +221,79 @@ public class FileWriteServiceImpl implements FileWriteService {
 				String acctDateUpdated = "";
 				if (!acctDateStr.isEmpty()) {
 					acctDateUpdated = String.format("%08d", Integer.parseInt(acctDateStr));
+
+					String thirdRow = String.format("%-5s", ssid) + "X" + String.format("%-9s", ctlNum)
+							+ String.format("%05d", 0) + String.format("%-10s", currClaimId)
+							+ String.format("%-3s", "VOU") + String.format("%05d", 0)
+							+ String.format("%010d", transCtrlNo) + String.format("%05d", dcCount)
+							+ String.format("%-18s", " ") + "VOH" + String.format("%-2s", " ")
+							+ String.format("%-8s", "1S" + claimIDStr) + "ADD" + "DOH01" + "+"
+							+ String.format("%-26.3f", claimTotal) + String.format("%-30s", invoiceNumber)
+							+ invoiceDateUpdated // Assuming invoiceDate is an integer, if not, adjust accordingly
+							+ rcvdDateUpdated // Assuming recvDate is an integer, if not, adjust accordingly
+							+ String.format("%010d", Integer.parseInt(sfsVendorId)) // Assuming sfsVendorId is an
+																					// integer, if not, adjust
+																					// accordingly
+							+ String.format("%-310s", " ") + String.format("%-1s", intElig) + paymentDateUpdated // Assuming
+																													// paymentDate
+																													// is
+																													// an
+																													// integer,
+																													// if
+																													// not,
+																													// adjust
+																													// accordingly
+							+ obligDateUpdated // Assuming obligDate is an integer, if not, adjust accordingly
+							+ String.format("%-254s", " ") + String.format("%-143s", " ") + acctDateUpdated // Assuming
+																											// acctDate
+																											// is an
+																											// integer,
+																											// if
+							+ String.format("%-93s", " ");
+
+					writer.newLine();
+					writer.write(thirdRow);
+					System.out.println("Third Row VOH written successfully.");
+
+					int voucherLineNo = 0;
+					transCtrlNo++;
+					voucherLineNo++;
+					// Build the VOL record
+					String fourthRow = String.format("%5s", ssid) + "X" + String.format("%-9s", ctlNum)
+							+ String.format("%05d", 0) + String.format("%-10s", currClaimId)
+							+ String.format("%3s", "VOU") + String.format("%05d", 0)
+							+ String.format("%010d", transCtrlNo) + String.format("%05d", 1)
+							+ String.format("%18s", " ") + "VOL" + String.format("%2s", " ")
+							+ String.format("%-8s", "2S" + claimIDStr) + String.format("%05d", voucherLineNo) + "DOH01"
+							+ "+" + String.format("%-26.3f", claimTotal) + String.format("%56s", " ")
+							+ String.format("%-30s", NDC) + String.format("%-70s", "340B Supplemental Reimbursement")
+							+ String.format("%723s", " ");
+
+					writer.newLine();
+					writer.write(fourthRow);
+					System.out.println("Fourth Row VOL written successfully.");
+
+					// Write VOD record
+					transCtrlNo++;
+
+					String fifthRow = String.format("%5s", ssid) + "X" + String.format("%-9s", ctlNum)
+							+ String.format("%05d", 0) + String.format("%-10s", currClaimId)
+							+ String.format("%3s", "VOU") + String.format("%05d", 0)
+							+ String.format("%010d", transCtrlNo) + String.format("%05d", 0)
+							+ String.format("%18s", " ") + "VOD" + String.format("%2s", " ")
+							+ String.format("%-8s", "2S" + claimIDStr) + String.format("%05d", voucherLineNo) + "DOH01"
+							+ "+" + String.format("%-26.3f", claimTotal) + String.format("%5s", " ")
+							+ String.format("%10s", " ") + String.format("%05d", 0) + String.format("%03d", 0)
+							+ String.format("%05d", 0) + String.format("%1s", " ") + String.format("%-10s", deptCode)
+							+ String.format("%-5s", "10000") + String.format("%15s", " ") + String.format("%15s", " ")
+							+ String.format("%5s", pgmCode) + String.format("%7s", budRef)
+							+ String.format("%-10s", "60301") + String.format("%-10s", "11850")
+							+ String.format("%773s", " ");
+
+					writer.newLine();
+					writer.write(fifthRow);
+					System.out.println("Fifth Row VOD written successfully.");
 				}
-
-				// Build the VOH record.
-				String thirdRow = String.format("%-5s", ssid) + "X" + String.format("%-9s", ctlNum)
-						+ String.format("%05d", 0) + String.format("%-10s", currClaimId) + String.format("%-3s", "VOU")
-						+ String.format("%05d", 0) + String.format("%010d", transCtrlNo)
-						+ String.format("%05d", dcCount) + String.format("%-18s", " ") + "VOH"
-						+ String.format("%-2s", " ") + String.format("%-8s", "1S" + claimIDStr) + "ADD" + "DOH01" + "+"
-						+ String.format("%-26.3f", claimTotal) + String.format("%-30s", invoiceNumber)
-						+ invoiceDateUpdated + // Invoice date
-						rcvdDateUpdated + // Recieved date
-						String.format("%010d", Integer.parseInt(sfsVendorId)) + String.format("%-310s", " ")
-						+ String.format("%-1s", intElig) + paymentDateUpdated + // Payment date
-						obligDateUpdated + // Obliged date
-						String.format("%-254s", " ") + String.format("%-143s", " ") + acctDateUpdated
-						+ String.format("%-93s", " ");
-
-				writer.newLine();
-				writer.write(thirdRow);
-				System.out.println("Third Row VOH written successfully.");
-
-				int voucherLineNo = 0;
-				transCtrlNo++;
-				voucherLineNo++;
-				// Build the VOL record
-				String fourthRow = String.format("%5s", ssid) + "X" + String.format("%-9s", ctlNum)
-						+ String.format("%05d", 0) + String.format("%-10s", currClaimId) + String.format("%3s", "VOU")
-						+ String.format("%05d", 0) + String.format("%010d", transCtrlNo) + String.format("%05d", 1)
-						+ String.format("%18s", " ") + "VOL" + String.format("%2s", " ")
-						+ String.format("%-8s", "2S" + claimIDStr) + String.format("%05d", voucherLineNo) + "DOH01"
-						+ "+" + String.format("%-26.3f", claimTotal) + String.format("%56s", " ")
-						+ String.format("%-30s", NDC) + String.format("%-70s", "340B Supplemental Reimbursement")
-						+ String.format("%723s", " ");
-
-				writer.newLine();
-				writer.write(fourthRow);
-				System.out.println("Fourth Row VOL written successfully.");
-
-				// Write VOD record
-				transCtrlNo++;
-
-				String fifthRow = String.format("%5s", ssid) + "X" + String.format("%-9s", ctlNum)
-						+ String.format("%05d", 0) + String.format("%-10s", currClaimId) + String.format("%3s", "VOU")
-						+ String.format("%05d", 0) + String.format("%010d", transCtrlNo) + String.format("%05d", 0)
-						+ String.format("%18s", " ") + "VOD" + String.format("%2s", " ")
-						+ String.format("%-8s", "2S" + claimIDStr) + String.format("%05d", voucherLineNo) + "DOH01"
-						+ "+" + String.format("%-26.3f", claimTotal) + String.format("%5s", " ")
-						+ String.format("%10s", " ") + String.format("%05d", 0) + String.format("%03d", 0)
-						+ String.format("%05d", 0) + String.format("%1s", " ") + String.format("%-10s", deptCode)
-						+ String.format("%-5s", "10000") + String.format("%15s", " ") + String.format("%15s", " ")
-						+ String.format("%5s", pgmCode) + String.format("%7s", budRef) + String.format("%-10s", "60301")
-						+ String.format("%-10s", "11850") + String.format("%773s", " ");
-
-				writer.newLine();
-				writer.write(fifthRow);
-				System.out.println("Fifth Row VOD written successfully.");
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -300,12 +303,12 @@ public class FileWriteServiceImpl implements FileWriteService {
 	}
 
 	private VohDetails getVohRecordDetails(int currClaimId) {
-		String sql = "SELECT DISTINCT REPLACE(DATE_FORMAT(CURDATE(), '%m/%d/%Y'), '/', '') AS acctDate , \r\n"
-				+ "c.InvoiceNo, \r\n" + "IFNULL(Rate,0) as claimTotal, \r\n" + "c.NDC, \r\n" + "a.SFSVendorId, \r\n"
-				+ "REPLACE(DATE_FORMAT(f.SubmitDate, '%m/%d/%Y'), '/', '') AS date_received, \r\n"
-				+ "REPLACE(DATE_FORMAT(c.dfilled, '%m/%d/%Y'), '/', '') AS dfilled, \r\n"
+		String sql = "SELECT DISTINCT REPLACE(CONVERT(varchar, GETDATE(), 101), '/', '') AS acctDate , \r\n"
+				+ "c.InvoiceNo, \r\n" + "ISNULL(Rate,0) as claimTotal, \r\n" + "c.NDC, \r\n" + "a.SFSVendorId, \r\n"
+				+ "REPLACE(CONVERT(varchar, f.SubmitDate, 101), '/', '') AS date_received, \r\n"
+				+ "REPLACE(CONVERT(varchar, c.dfilled, 101), '/', '') AS dfilled, \r\n"
 				+ "(case when mv.payee_type in ('B','C','G','M') then 'N' else 'Y' end) as interest_eligible, \r\n"
-				+ "REPLACE(DATE_FORMAT(DATE_ADD(CURDATE(), INTERVAL 2 DAY), '%m/%d/%Y'), '/', '') AS paymentDate \r\n"
+				+ "REPLACE(CONVERT(varchar, DATEADD(day, 2, GETDATE()), 101), '/', '') AS paymentDate \r\n"
 				+ "from std_claims c, \r\n" + "files f, \r\n" + "Agency a, \r\n" + "agencyreimbrate ar, \r\n"
 				+ "m131_vendor mv \r\n" + "where c.FIle_id=f.id \r\n" + "and f.AgencyFEIN = a.FEIN \r\n"
 				+ "and a.SFSVendorId=mv.VENDOR_ID \r\n" + "and ar.AgencyID = a.FEIN \r\n" + "and c.id = " + currClaimId;
@@ -329,7 +332,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 			vohDetails.setClaimTotal(claimTotal);
 			vohDetails.setNDC(NDC);
 			vohDetails.setSFSVendorId(SFSVendorId);
-			vohDetails.setDateRecieved(date_received);
+			vohDetails.setDateReceived(date_received);
 			vohDetails.setDfilled(dfilled);
 			vohDetails.setInterestEligible(interest_eligible);
 			vohDetails.setPaymentDate(paymentDate);

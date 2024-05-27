@@ -8,7 +8,7 @@ public class VohDetails {
 	BigDecimal claimTotal;
 	String NDC;
 	String SFSVendorId;
-	String dateRecieved;
+	String dateReceived;
 	String dfilled;
 	String interestEligible;
 	String paymentDate;
@@ -53,12 +53,14 @@ public class VohDetails {
 		SFSVendorId = sFSVendorId;
 	}
 
-	public String getDateRecieved() {
-		return dateRecieved;
+	
+
+	public String getDateReceived() {
+		return dateReceived;
 	}
 
-	public void setDateRecieved(String dateRecieved) {
-		this.dateRecieved = dateRecieved;
+	public void setDateReceived(String dateReceived) {
+		this.dateReceived = dateReceived;
 	}
 
 	public String getDfilled() {

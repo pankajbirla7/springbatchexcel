@@ -6,7 +6,7 @@ public class MyDataObject {
 
 	private Long id;
 
-	private String fin;
+	private String fein;
 
 	private String cin;
 
@@ -28,12 +28,12 @@ public class MyDataObject {
 		this.id = id;
 	}
 
-	public String getFin() {
-		return fin;
+	public String getFein() {
+		return fein;
 	}
 
-	public void setFin(String fin) {
-		this.fin = fin;
+	public void setFein(String fein) {
+		this.fein = fein;
 	}
 
 	public String getCin() {

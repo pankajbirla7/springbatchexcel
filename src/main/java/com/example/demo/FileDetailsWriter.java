@@ -26,7 +26,7 @@ public class FileDetailsWriter {
 		System.out.println("Total items to write in db : " + chunk.size());
 		if (chunk != null && chunk.getItems().size() > 0) {
 			for (FileDetails item : chunk.getItems()) {
-				if (item.getAgencyFin() != null) {
+				if (item.getAgencyFein() != null) {
 					System.out.println("Writing item: " + item);
 					String sql = "INSERT INTO Files (AgencyFEIN, Filename, Submitted_By_Email, SubmitDate) VALUES (?, ?, ?, CURRENT_DATE())";
 					// int i = jdbcTemplate.update(sql, Integer.parseInt(item.getAgencyFin()),
@@ -37,7 +37,7 @@ public class FileDetailsWriter {
 						@Override
 						public PreparedStatement createPreparedStatement(Connection connection) throws SQLException {
 							PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-							ps.setString(1, item.getAgencyFin());
+							ps.setInt(1, Integer.parseInt(item.getAgencyFein()));
 							ps.setString(2, item.getFileName());
 							ps.setString(3, item.getSubmittedByEmail());
 							return ps;
