@@ -88,7 +88,6 @@ public class FileWriteServiceImpl implements FileWriteService {
 			int claimCount = stdClaimDao.getClaimCountByDateEntered(fileDetails.getSubmitDate(), Constants.NEW);
 			System.out.println("Total Cliam count for stadClaim date value greater than : " + " for file Id : "
 					+ stdClaim.getFileid());
-			claimCount = 11;
 
 			List<StdClaim> stdClaims2 = stdClaimDao.getClaimIds(fileDetails.getSubmitDate(), Constants.NEW);
 			String filePath = writeFirstClaimCountRowInFile(claimCount, stdClaim, stdClaims2, fileDetails);
