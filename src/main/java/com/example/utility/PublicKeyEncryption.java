@@ -105,9 +105,13 @@ public class PublicKeyEncryption {
 						String inputFilePath = file.getAbsolutePath();
 						String outputFilePath = decryptFilePath + File.separator
 								+ FilenameUtils.removeExtension(file.getName()) + ".txt";
-						decryptFileByCommandLine(inputFilePath, outputFilePath, privateKeyPath, passphrase);
-						System.out.println("File decrypted: " + file.getName());
-						decryptedFiles.add(outputFilePath);
+						boolean isDecryptionSuccess = decryptFileByCommandLine(inputFilePath, outputFilePath, privateKeyPath, passphrase);
+						if(isDecryptionSuccess) {
+							System.out.println("File decrypted: " + file.getName());
+							decryptedFiles.add(outputFilePath);
+						}else {
+							System.out.println("decryption failed for the file : "+inputFilePath);
+						}
 					}
 				}
 			} else {
@@ -119,7 +123,7 @@ public class PublicKeyEncryption {
 		return decryptedFiles;
 	}
 
-	private static void decryptFileByCommandLine(String encryptedFilePath, String decryptedFilePath,
+	private static boolean decryptFileByCommandLine(String encryptedFilePath, String decryptedFilePath,
 			String privateKeyPath, String passphrase) {
 		String[] command = { "gpg", "--batch", "--quiet", "--pinentry-mode", "loopback", "--passphrase", passphrase,
 				"--decrypt", encryptedFilePath };
@@ -150,6 +154,8 @@ public class PublicKeyEncryption {
 		} catch (IOException | InterruptedException e) {
 			System.out.println("File decryption error for encrypted file. " + encryptedFilePath);
 			e.printStackTrace();
+			return false;
 		}
+		return true;
 	}
 }

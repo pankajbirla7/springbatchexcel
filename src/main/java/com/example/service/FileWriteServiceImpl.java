@@ -76,6 +76,9 @@ public class FileWriteServiceImpl implements FileWriteService {
 
 	@Value("${sftp.remotedirectory.download}")
 	private String sftpRemoteDownloadDirectory;
+	
+	@Value("${sftp.remotedirectory.archive}")
+	private String sftpRemoteArchiveDirectory;
 
 	@Override
 	public void generateFile() {
@@ -117,7 +120,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 	public void downloadAndDecrptFile() {
 
 		utility.downloadFilesFromSftpAndDecrypt(downloadSftpFilePath, decryptedFileDirectory, passphrase, sftpHost,
-				port, sftpUserName, sftpPassword, privateKeyPath, sftpRemoteDownloadDirectory);
+				port, sftpUserName, sftpPassword, privateKeyPath, sftpRemoteDownloadDirectory, sftpRemoteArchiveDirectory);
 	}
 
 	private String writeFirstClaimCountRowInFile(int claimCount, StdClaim stdClaim1, List<StdClaim> stdClaims2,
