@@ -34,65 +34,64 @@ import org.bouncycastle.openpgp.operator.jcajce.JcePublicKeyKeyEncryptionMethodG
 
 public class PublicKeyEncryption {
 
-	public static void encryptFile(String inputFilePath, String outputFilePath, String publicKeyPath) throws IOException, PGPException {
-	    try (OutputStream outputStream = new FileOutputStream(outputFilePath)) {
-	        PGPPublicKey publicKey = readPublicKey(publicKeyPath);
+	public static void encryptFile(String inputFilePath, String outputFilePath, String publicKeyPath)
+			throws IOException, PGPException {
+		try (OutputStream outputStream = new FileOutputStream(outputFilePath)) {
+			PGPPublicKey publicKey = readPublicKey(publicKeyPath);
 
-	        PGPEncryptedDataGenerator encryptedDataGenerator = new PGPEncryptedDataGenerator(
-	                new JcePGPDataEncryptorBuilder(PGPEncryptedData.AES_256)
-	                        .setWithIntegrityPacket(true)
-	                        .setSecureRandom(new SecureRandom())
-	                        .setProvider("BC")
-	        );
-	        encryptedDataGenerator.addMethod(new JcePublicKeyKeyEncryptionMethodGenerator(publicKey).setProvider("BC"));
+			PGPEncryptedDataGenerator encryptedDataGenerator = new PGPEncryptedDataGenerator(
+					new JcePGPDataEncryptorBuilder(PGPEncryptedData.AES_256).setWithIntegrityPacket(true)
+							.setSecureRandom(new SecureRandom()).setProvider("BC"));
+			encryptedDataGenerator.addMethod(new JcePublicKeyKeyEncryptionMethodGenerator(publicKey).setProvider("BC"));
 
-	        try (OutputStream encryptedOut = encryptedDataGenerator.open(outputStream, new byte[4096])) {
-	            PGPCompressedDataGenerator compressedDataGenerator = new PGPCompressedDataGenerator(PGPCompressedData.ZIP);
-	            try (OutputStream compressedOut = compressedDataGenerator.open(encryptedOut)) {
-	                PGPLiteralDataGenerator literalDataGenerator = new PGPLiteralDataGenerator();
-	                try (OutputStream literalOut = literalDataGenerator.open(compressedOut,
-	                        PGPLiteralData.BINARY, new File(inputFilePath))) {
-	                    try (InputStream inputFile = new FileInputStream(inputFilePath)) {
-	                        byte[] buffer = new byte[4096];
-	                        int len;
-	                        while ((len = inputFile.read(buffer)) > 0) {
-	                            literalOut.write(buffer, 0, len);
-	                        }
-	                    }
-	                }
-	            }
-	        }
-	    }
+			try (OutputStream encryptedOut = encryptedDataGenerator.open(outputStream, new byte[4096])) {
+				PGPCompressedDataGenerator compressedDataGenerator = new PGPCompressedDataGenerator(
+						PGPCompressedData.ZIP);
+				try (OutputStream compressedOut = compressedDataGenerator.open(encryptedOut)) {
+					PGPLiteralDataGenerator literalDataGenerator = new PGPLiteralDataGenerator();
+					try (OutputStream literalOut = literalDataGenerator.open(compressedOut, PGPLiteralData.BINARY,
+							new File(inputFilePath))) {
+						try (InputStream inputFile = new FileInputStream(inputFilePath)) {
+							byte[] buffer = new byte[4096];
+							int len;
+							while ((len = inputFile.read(buffer)) > 0) {
+								literalOut.write(buffer, 0, len);
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 
 	private static PGPPublicKey readPublicKey(String publicKeyPath) throws IOException, PGPException {
-	    try (InputStream keyIn = new BufferedInputStream(new FileInputStream(publicKeyPath))) {
-	        InputStream decoderStream = PGPUtil.getDecoderStream(keyIn);
-	        PGPObjectFactory pgpFactory = new PGPObjectFactory(decoderStream, new JcaKeyFingerprintCalculator());
-	        Object object = pgpFactory.nextObject();
-	        PGPPublicKeyRing keyRing = null;
+		try (InputStream keyIn = new BufferedInputStream(new FileInputStream(publicKeyPath))) {
+			InputStream decoderStream = PGPUtil.getDecoderStream(keyIn);
+			PGPObjectFactory pgpFactory = new PGPObjectFactory(decoderStream, new JcaKeyFingerprintCalculator());
+			Object object = pgpFactory.nextObject();
+			PGPPublicKeyRing keyRing = null;
 
-	        while (object != null) {
-	            if (object instanceof PGPPublicKeyRing) {
-	                keyRing = (PGPPublicKeyRing) object;
-	                break;
-	            }
-	            object = pgpFactory.nextObject();
-	        }
+			while (object != null) {
+				if (object instanceof PGPPublicKeyRing) {
+					keyRing = (PGPPublicKeyRing) object;
+					break;
+				}
+				object = pgpFactory.nextObject();
+			}
 
-	        if (keyRing == null) {
-	            throw new IllegalArgumentException("No public key ring found in the provided file.");
-	        }
+			if (keyRing == null) {
+				throw new IllegalArgumentException("No public key ring found in the provided file.");
+			}
 
-	        Iterator<PGPPublicKey> keyIter = keyRing.getPublicKeys();
-	        while (keyIter.hasNext()) {
-	            PGPPublicKey key = keyIter.next();
-	            if (key.isEncryptionKey()) {
-	                return key;
-	            }
-	        }
-	    }
-	    throw new IllegalArgumentException("No encryption key found in the provided public key file.");
+			Iterator<PGPPublicKey> keyIter = keyRing.getPublicKeys();
+			while (keyIter.hasNext()) {
+				PGPPublicKey key = keyIter.next();
+				if (key.isEncryptionKey()) {
+					return key;
+				}
+			}
+		}
+		throw new IllegalArgumentException("No encryption key found in the provided public key file.");
 	}
 
 	public static List<String> decryptFiles(String downloadFilePath, String decryptFilePath, String privateKeyPath,
