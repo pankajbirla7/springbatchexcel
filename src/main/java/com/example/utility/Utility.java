@@ -39,51 +39,51 @@ public class Utility {
 	}
 
 // Upload file to SFTP server
-	public void uploadFile(String localFilePath, String host, int port, String username, String password,
-			String passphrase, String privateKeyPath, String remoteDirectory)
-			throws JSchException, SftpException, FileNotFoundException {
-		try {
+		public void uploadFile(String localFilePath, String host, int port, String username, String password,
+				String passphrase, String privateKeyPath, String remoteDirectory)
+				throws JSchException, SftpException, FileNotFoundException {
+			try {
 
-			File file = new File(localFilePath);
-			// Establishing the session
-			JSch jsch = new JSch();
-			Session session = jsch.getSession(username, host, port);
-			session.setPassword(password);
-			session.setConfig("StrictHostKeyChecking", "no");
-			session.connect();
+				File file = new File(localFilePath);
+				// Establishing the session
+				JSch jsch = new JSch();
+				Session session = jsch.getSession(username, host, port);
+				session.setPassword(password);
+				session.setConfig("StrictHostKeyChecking", "no");
+				session.connect();
 
-			// Opening the SFTP channel
-			ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
-			channelSftp.connect();
+				// Opening the SFTP channel
+				ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
+				channelSftp.connect();
 
-			// Uploading the encrypted file
-// FileInputStream encryptedFileInputStream = new FileInputStream(file);
-// channelSftp.put(encryptedFileInputStream, remoteDirectory + file.getName());
+				// Uploading the encrypted file
+//				FileInputStream encryptedFileInputStream = new FileInputStream(file);
+//				channelSftp.put(encryptedFileInputStream, remoteDirectory + file.getName());
+				
+				// Change to the target directory
+	            channelSftp.cd(remoteDirectory);
 
-			// Change to the target directory
-			channelSftp.cd(remoteDirectory);
+	            // Upload file
+	            try (FileInputStream fis = new FileInputStream(file)) {
+	                channelSftp.put(fis, file.getName());
+	            }
 
-			// Upload file
-			try (FileInputStream fis = new FileInputStream(file)) {
-				channelSftp.put(fis, file.getName());
+	            System.out.println("File uploaded successfully to " + localFilePath);
+
+				// Disconnecting the channel and session
+				channelSftp.disconnect();
+				session.disconnect();
+
+				// Closing the file input stream
+			//	encryptedFileInputStream.close();
+
+				System.out.println("File uploaded successfully.");
+			} catch (JSchException | SftpException e) {
+				e.printStackTrace();
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
-
-			System.out.println("File uploaded successfully to " + localFilePath);
-
-			// Disconnecting the channel and session
-			channelSftp.disconnect();
-			session.disconnect();
-
-			// Closing the file input stream
-// encryptedFileInputStream.close();
-
-			System.out.println("File uploaded successfully.");
-		} catch (JSchException | SftpException e) {
-			e.printStackTrace();
-		} catch (Exception e) {
-			e.printStackTrace();
 		}
-	}
 
 	public void moveFileToSFTP(String inputFilePath, String outputFilePath, String publicKeyPath, String passphrase,
 			String host, int port, String username, String password, String privateKeyPath, String remoteDirectory) {
