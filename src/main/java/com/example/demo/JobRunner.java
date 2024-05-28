@@ -39,14 +39,22 @@ public class JobRunner {
 	@Scheduled(cron = "0 0/1 * ? * *")
 	public void prepareFile() throws Exception {
 		System.out.println("Batch Job 2 started ");
-	//	fileWriteService.generateFile();
+		fileWriteService.generateFile();
 		
 	}
-	
+
 	@Scheduled(cron = "0 0/1 * ? * *")
 	public void downloadFileAndDecrpt() throws Exception {
 		System.out.println("Batch Job 3 started ");
-	//	fileWriteService.downloadAndDecrptFile();
+		fileWriteService.downloadAndDecrptFile();
+		
+	}
+	
+
+	@Scheduled(cron = "0 0/20 * ? * *")
+	public void downloadAndDecryptProcessedFiles() throws Exception {
+		System.out.println("Batch Job 3 started ");
+		fileWriteService.downloadAndDecryptProcessedFiles();
 		
 	}
 }
