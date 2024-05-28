@@ -79,11 +79,45 @@ public class Utility {
 	}
 
 	public void downloadFilesFromSftpAndDecrypt(String downloadFilePath, String decryptFilePath, String passphrase,
-			String host, int port, String username, String password, String privateKeyPath, String remoteDirectory) {
+			String host, int port, String username, String password, String privateKeyPath, String remoteDirectory, String sftpRemoteArchiveDirectory) {
 		try {
 			downloadFiles(host, port, username, password, passphrase, privateKeyPath, downloadFilePath,
 					remoteDirectory);
 			decryptFile(passphrase, privateKeyPath, downloadFilePath, decryptFilePath);
+			
+			archiveSftpFiles(host, port, username, password, passphrase, privateKeyPath, downloadFilePath,
+					remoteDirectory, sftpRemoteArchiveDirectory);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	private void archiveSftpFiles(String host, int port, String username, String password, String passphrase,
+			String privateKeyPath, String downloadFilePath, String remoteDirectory, String sftpRemoteArchiveDirectory) {
+		try {
+			JSch jsch = new JSch();
+			Session session = jsch.getSession(username, host, port);
+			session.setPassword(password);
+			session.setConfig("StrictHostKeyChecking", "no");
+			session.connect();
+
+			ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
+			channelSftp.connect();
+			
+			File[] files = new File(downloadFilePath).listFiles();
+			if (files != null) {
+				for (File file : files) {
+					channelSftp.rename(remoteDirectory+"/"+file.getName(), sftpRemoteArchiveDirectory+"/"+file.getName());
+					System.out.println("File moved to archive directory successfully " + file.getName());
+				}
+			}
+
+			channelSftp.disconnect();
+			session.disconnect();
+
+			System.out.println("All files archived successfully.");
+		} catch (JSchException | SftpException e) {
+			e.printStackTrace();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
