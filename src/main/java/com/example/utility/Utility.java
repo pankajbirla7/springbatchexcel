@@ -136,18 +136,20 @@ public class Utility {
 			channelSftp = (ChannelSftp) session.openChannel("sftp");
 			channelSftp.connect();
 
-			File[] files = new File(downloadFilePath).listFiles();
-			if (files != null) {
-				for (File file : files) {
-					String fileName = file.getName();
-					String sourceFilePath = remoteDirectory + "/" + fileName;
-					String destinationFilePath = sftpRemoteArchiveDirectory + "/" + fileName;
+			// List files in the source directory
+	        Vector<ChannelSftp.LsEntry> files = channelSftp.ls(remoteDirectory);
 
-					// Move the file
-					channelSftp.rename(sourceFilePath, destinationFilePath);
-					System.out.println("Moved file: " + sourceFilePath + " to " + destinationFilePath);
-				}
-			}
+	        for (ChannelSftp.LsEntry file : files) {
+	            if (!file.getAttrs().isDir()) {
+	                String fileName = file.getFilename();
+	                String sourceFilePath = remoteDirectory + "/" + fileName;
+	                String destinationFilePath = sftpRemoteArchiveDirectory + "/" + fileName;
+
+	                // Move the file
+	                channelSftp.rename(sourceFilePath, destinationFilePath);
+	                System.out.println("Moved file: " + sourceFilePath + " to " + destinationFilePath);
+	            }
+	        }
 
 		} catch (Exception e) {
 			e.printStackTrace();
