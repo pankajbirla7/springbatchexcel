@@ -5,5 +5,7 @@ public interface FileWriteService {
 	public void generateFile();
 	
 	public void downloadAndDecrptFile();
+	
+	public void downloadAndDecryptProcessedFiles();
 
 }

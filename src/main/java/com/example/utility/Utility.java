@@ -11,6 +11,7 @@ import java.io.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Scanner;
 import java.util.Vector;
 import java.util.regex.Matcher;
@@ -22,11 +23,16 @@ public class Utility {
 	@Autowired
 	StdClaimService stdClaimService;
 
+///////////////////////////// Encrypt File and Upload File To SFTP server
+///////////////////////////// ////////////////////////////
+
 	public void encryptAndUpload(String inputFilePath, String outputFilePath, String publicKeyPath, String passphrase,
 			String host, int port, String username, String password, String privateKeyPath, String remoteDirectory)
 			throws IOException, PGPException, JSchException {
+		// Encrypt the file
 		PublicKeyEncryption.encryptFile(inputFilePath, outputFilePath, publicKeyPath);
 
+		// Upload the encrypted file to SFTP server
 		try {
 			uploadFile(outputFilePath, host, port, username, password, passphrase, privateKeyPath, remoteDirectory);
 		} catch (Exception e) {
@@ -34,31 +40,44 @@ public class Utility {
 		}
 	}
 
+// Upload file to SFTP server
 	public void uploadFile(String localFilePath, String host, int port, String username, String password,
 			String passphrase, String privateKeyPath, String remoteDirectory)
 			throws JSchException, SftpException, FileNotFoundException {
 		try {
 
 			File file = new File(localFilePath);
+			// Establishing the session
 			JSch jsch = new JSch();
 			Session session = jsch.getSession(username, host, port);
 			session.setPassword(password);
 			session.setConfig("StrictHostKeyChecking", "no");
 			session.connect();
 
+			// Opening the SFTP channel
 			ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
 			channelSftp.connect();
 
+			// Uploading the encrypted file
+// FileInputStream encryptedFileInputStream = new FileInputStream(file);
+// channelSftp.put(encryptedFileInputStream, remoteDirectory + file.getName());
+
+			// Change to the target directory
 			channelSftp.cd(remoteDirectory);
 
+			// Upload file
 			try (FileInputStream fis = new FileInputStream(file)) {
 				channelSftp.put(fis, file.getName());
 			}
 
 			System.out.println("File uploaded successfully to " + localFilePath);
 
+			// Disconnecting the channel and session
 			channelSftp.disconnect();
 			session.disconnect();
+
+			// Closing the file input stream
+// encryptedFileInputStream.close();
 
 			System.out.println("File uploaded successfully.");
 		} catch (JSchException | SftpException e) {
@@ -78,13 +97,16 @@ public class Utility {
 		}
 	}
 
+/////////////////////////////// Download SFTP File And Decryopt
+/////////////////////////////// ///////////////////////////////
+
 	public void downloadFilesFromSftpAndDecrypt(String downloadFilePath, String decryptFilePath, String passphrase,
-			String host, int port, String username, String password, String privateKeyPath, String remoteDirectory, String sftpRemoteArchiveDirectory) {
+			String host, int port, String username, String password, String privateKeyPath, String remoteDirectory,
+			String sftpRemoteArchiveDirectory, boolean isProcessVoucherDetails) {
 		try {
 			downloadFiles(host, port, username, password, passphrase, privateKeyPath, downloadFilePath,
 					remoteDirectory);
-			decryptFile(passphrase, privateKeyPath, downloadFilePath, decryptFilePath);
-			
+			decryptFile(passphrase, privateKeyPath, downloadFilePath, decryptFilePath, isProcessVoucherDetails);
 			archiveSftpFiles(host, port, username, password, passphrase, privateKeyPath, downloadFilePath,
 					remoteDirectory, sftpRemoteArchiveDirectory);
 		} catch (Exception e) {
@@ -94,42 +116,61 @@ public class Utility {
 
 	private void archiveSftpFiles(String host, int port, String username, String password, String passphrase,
 			String privateKeyPath, String downloadFilePath, String remoteDirectory, String sftpRemoteArchiveDirectory) {
+
+		Session session = null;
+		ChannelSftp channelSftp = null;
 		try {
 			JSch jsch = new JSch();
-			Session session = jsch.getSession(username, host, port);
+			session = jsch.getSession(username, host, port);
 			session.setPassword(password);
-			session.setConfig("StrictHostKeyChecking", "no");
+
+			// Configure the session
+			Properties config = new Properties();
+			config.put("StrictHostKeyChecking", "no");
+			session.setConfig(config);
+
+			// Connect to the session
 			session.connect();
 
-			ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
+			// Open the SFTP channel
+			channelSftp = (ChannelSftp) session.openChannel("sftp");
 			channelSftp.connect();
-			
-			File[] files = new File(downloadFilePath).listFiles();
-			if (files != null) {
-				for (File file : files) {
-					channelSftp.rename(remoteDirectory+"/"+file.getName(), sftpRemoteArchiveDirectory+"/"+file.getName());
-					System.out.println("File moved to archive directory successfully " + file.getName());
-				}
-			}
 
-			channelSftp.disconnect();
-			session.disconnect();
+			// List files in the source directory
+	        Vector<ChannelSftp.LsEntry> files = channelSftp.ls(remoteDirectory);
 
-			System.out.println("All files archived successfully.");
-		} catch (JSchException | SftpException e) {
-			e.printStackTrace();
+	        for (ChannelSftp.LsEntry file : files) {
+	            if (!file.getAttrs().isDir()) {
+	                String fileName = file.getFilename();
+	                String sourceFilePath = remoteDirectory + "/" + fileName;
+	                String destinationFilePath = sftpRemoteArchiveDirectory + "/" + fileName;
+
+	                // Move the file
+	                channelSftp.rename(sourceFilePath, destinationFilePath);
+	                System.out.println("Moved file: " + sourceFilePath + " to " + destinationFilePath);
+	            }
+	        }
+
 		} catch (Exception e) {
 			e.printStackTrace();
+		} finally {
+			if (channelSftp != null) {
+				channelSftp.disconnect();
+			}
+			if (session != null) {
+				session.disconnect();
+			}
 		}
 	}
 
-	private void decryptFile(String passphrase, String privateKeyPath, String downloadFilePath,
-			String decryptFilePath) {
+	private void decryptFile(String passphrase, String privateKeyPath, String downloadFilePath, String decryptFilePath,
+			boolean isProcessVoucherDetails) {
 
+		// Decrypting files
 		try {
 			List<String> filePaths = PublicKeyEncryption.decryptFiles(downloadFilePath, decryptFilePath, privateKeyPath,
 					passphrase);
-			if (filePaths != null && filePaths.size() > 0) {
+			if (isProcessVoucherDetails && filePaths != null && filePaths.size() > 0) {
 				parseFilesAndSaveVoucherDetails(filePaths);
 			}
 

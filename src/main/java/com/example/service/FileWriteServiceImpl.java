@@ -76,9 +76,23 @@ public class FileWriteServiceImpl implements FileWriteService {
 
 	@Value("${sftp.remotedirectory.download}")
 	private String sftpRemoteDownloadDirectory;
-	
+
 	@Value("${sftp.remotedirectory.archive}")
 	private String sftpRemoteArchiveDirectory;
+	
+
+	@Value("${download.sftp.processed.file.path}")
+	private String downloadSftpProcessedFilePath;
+	
+	@Value("${decrypted.processed.file.path}")
+	private String decryptedProcessedFileDirectory;
+
+	
+	@Value("${sftp.processed.remotedirectory.download}")
+	private String sftpProcessedRemoteDownloadDirectory;
+
+	@Value("${sftp.processed.remotedirectory.archive}")
+	private String sftpProcessedRemoteArchiveDirectory;
 
 	@Override
 	public void generateFile() {
@@ -113,14 +127,6 @@ public class FileWriteServiceImpl implements FileWriteService {
 
 		utility.moveFileToSFTP(inputFilePath, outputFilePath, publicKeyPath, passphrase, sftpHost, port, sftpUserName,
 				sftpPassword, privateKeyPath, sftpRemoteUploadDirectory);
-	}
-
-///////////////////////////////Download ANd Decrypt File/////////////////////////////////
-	@Override
-	public void downloadAndDecrptFile() {
-
-		utility.downloadFilesFromSftpAndDecrypt(downloadSftpFilePath, decryptedFileDirectory, passphrase, sftpHost,
-				port, sftpUserName, sftpPassword, privateKeyPath, sftpRemoteDownloadDirectory, sftpRemoteArchiveDirectory);
 	}
 
 	private String writeFirstClaimCountRowInFile(int claimCount, StdClaim stdClaim1, List<StdClaim> stdClaims2,
@@ -343,4 +349,22 @@ public class FileWriteServiceImpl implements FileWriteService {
 		}
 		return vohDetails;
 	}
+
+	///////////////////////////////Download ANd Decrypt File/////////////////////////////////
+	@Override
+	public void downloadAndDecrptFile() {
+
+		utility.downloadFilesFromSftpAndDecrypt(downloadSftpFilePath, decryptedFileDirectory, passphrase, sftpHost,
+				port, sftpUserName, sftpPassword, privateKeyPath, sftpRemoteDownloadDirectory,
+				sftpRemoteArchiveDirectory);
+	}
+	
+	@Override
+	public void downloadAndDecryptProcessedFiles() {
+
+		utility.downloadFilesFromSftpAndDecrypt(downloadSftpProcessedFilePath, decryptedProcessedFileDirectory, passphrase, sftpHost,
+				port, sftpUserName, sftpPassword, privateKeyPath, sftpProcessedRemoteDownloadDirectory,
+				sftpProcessedRemoteArchiveDirectory);
+	}
+
 }
