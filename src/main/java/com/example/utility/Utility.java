@@ -234,8 +234,8 @@ public class Utility {
 						String error = values[7];
 						if (docNumber != null && docNumber.startsWith("1S")) {
 							if (voucherDetailsAndStatusMap.get(docNumber) != null) {
-								if (!voucherDetailsAndStatusMap.get(docNumber).equals("SUCCESS")
-										&& !voucherDetailsAndStatusMap.get(docNumber).equals("ERROR")) {
+								if (!voucherDetailsAndStatusMap.get(docNumber).equalsIgnoreCase("SUCCESS")
+										&& !voucherDetailsAndStatusMap.get(docNumber).equalsIgnoreCase("ERROR")) {
 									voucherDetailsAndStatusMap.put(docNumber, error);
 								}
 							} else {

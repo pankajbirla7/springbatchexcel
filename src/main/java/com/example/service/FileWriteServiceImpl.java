@@ -356,7 +356,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 
 		utility.downloadFilesFromSftpAndDecrypt(downloadSftpFilePath, decryptedFileDirectory, passphrase, sftpHost,
 				port, sftpUserName, sftpPassword, privateKeyPath, sftpRemoteDownloadDirectory,
-				sftpRemoteArchiveDirectory);
+				sftpRemoteArchiveDirectory, true);
 	}
 	
 	@Override
@@ -364,7 +364,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 
 		utility.downloadFilesFromSftpAndDecrypt(downloadSftpProcessedFilePath, decryptedProcessedFileDirectory, passphrase, sftpHost,
 				port, sftpUserName, sftpPassword, privateKeyPath, sftpProcessedRemoteDownloadDirectory,
-				sftpProcessedRemoteArchiveDirectory);
+				sftpProcessedRemoteArchiveDirectory, false);
 	}
 
 }
