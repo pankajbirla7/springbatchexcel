@@ -93,6 +93,12 @@ public class FileWriteServiceImpl implements FileWriteService {
 
 	@Value("${sftp.processed.remotedirectory.archive}")
 	private String sftpProcessedRemoteArchiveDirectory;
+	
+	@Value("${archive.download.sftp.file.path}")
+	private String archiveDownloadDirectory;
+	
+	@Value("${archive.download.sftp.processed.file.path}")
+	private String archiveProcessedDownloadDirectory;
 
 	@Override
 	public void generateFile() {
@@ -356,7 +362,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 
 		utility.downloadFilesFromSftpAndDecrypt(downloadSftpFilePath, decryptedFileDirectory, passphrase, sftpHost,
 				port, sftpUserName, sftpPassword, privateKeyPath, sftpRemoteDownloadDirectory,
-				sftpRemoteArchiveDirectory, true);
+				sftpRemoteArchiveDirectory, true, archiveDownloadDirectory, null);
 	}
 	
 	@Override
@@ -364,7 +370,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 
 		utility.downloadFilesFromSftpAndDecrypt(downloadSftpProcessedFilePath, decryptedProcessedFileDirectory, passphrase, sftpHost,
 				port, sftpUserName, sftpPassword, privateKeyPath, sftpProcessedRemoteDownloadDirectory,
-				sftpProcessedRemoteArchiveDirectory, false);
+				sftpProcessedRemoteArchiveDirectory, false, archiveProcessedDownloadDirectory, Constants.FILE_PATTERN);
 	}
 
 }

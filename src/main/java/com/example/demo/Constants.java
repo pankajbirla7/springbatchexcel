@@ -6,6 +6,8 @@ public class Constants {
 
 	public static final String SUCCESSS = "Success";
 
+	public static final String FILE_PATTERN = "DM171";
+
 	public static int PROCESSED = 4;
 
 	public static int NEW = 1;
