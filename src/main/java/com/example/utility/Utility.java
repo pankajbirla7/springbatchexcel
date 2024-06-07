@@ -8,6 +8,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +20,7 @@ import java.util.Scanner;
 import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 @Component
 public class Utility {
@@ -102,20 +107,46 @@ public class Utility {
 
 	public void downloadFilesFromSftpAndDecrypt(String downloadFilePath, String decryptFilePath, String passphrase,
 			String host, int port, String username, String password, String privateKeyPath, String remoteDirectory,
-			String sftpRemoteArchiveDirectory, boolean isProcessVoucherDetails) {
+			String sftpRemoteArchiveDirectory, boolean isProcessVoucherDetails, String archiveDownloadDirectory, String filePattern) {
 		try {
 			downloadFiles(host, port, username, password, passphrase, privateKeyPath, downloadFilePath,
-					remoteDirectory);
+					remoteDirectory, filePattern);
 			decryptFile(passphrase, privateKeyPath, downloadFilePath, decryptFilePath, isProcessVoucherDetails);
 			archiveSftpFiles(host, port, username, password, passphrase, privateKeyPath, downloadFilePath,
-					remoteDirectory, sftpRemoteArchiveDirectory);
+					remoteDirectory, sftpRemoteArchiveDirectory, filePattern);
+			archiveFiles(downloadFilePath, archiveDownloadDirectory);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
+	private void archiveFiles(String downloadFilePath, String archiveDownloadDirectory) {
+		Path sourceDir = Paths.get(downloadFilePath);
+        Path destinationDir = Paths.get(archiveDownloadDirectory);
+
+        try (Stream<Path> files = Files.list(sourceDir)) {
+            files.forEach(file -> {
+                try {
+                    // Check if the current path is a regular file (not a directory or symbolic link)
+                    if (Files.isRegularFile(file)) {
+                        // Define the target path in the destination directory
+                        Path targetPath = destinationDir.resolve(file.getFileName());
+
+                        // Move the file to the target directory
+                        Files.move(file, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                        System.out.println("Moved: " + file.getFileName());
+                    }
+                } catch (IOException e) {
+                    System.err.println("Failed to move file: " + file.getFileName() + " due to: " + e.getMessage());
+                }
+            });
+        } catch (IOException e) {
+            System.err.println("Failed to list files in the source directory: " + e.getMessage());
+        }
+    }
+
 	private void archiveSftpFiles(String host, int port, String username, String password, String passphrase,
-			String privateKeyPath, String downloadFilePath, String remoteDirectory, String sftpRemoteArchiveDirectory) {
+			String privateKeyPath, String downloadFilePath, String remoteDirectory, String sftpRemoteArchiveDirectory, String filePattern) {
 
 		Session session = null;
 		ChannelSftp channelSftp = null;
@@ -142,12 +173,23 @@ public class Utility {
 	        for (ChannelSftp.LsEntry file : files) {
 	            if (!file.getAttrs().isDir()) {
 	                String fileName = file.getFilename();
-	                String sourceFilePath = remoteDirectory + "/" + fileName;
-	                String destinationFilePath = sftpRemoteArchiveDirectory + "/" + fileName;
-
-	                // Move the file
-	                channelSftp.rename(sourceFilePath, destinationFilePath);
-	                System.out.println("Moved file: " + sourceFilePath + " to " + destinationFilePath);
+	                if(filePattern!=null) {
+	                	if(fileName.contains(filePattern)) {
+			                String sourceFilePath = remoteDirectory + "/" + fileName;
+			                String destinationFilePath = sftpRemoteArchiveDirectory + "/" + fileName;
+		
+			                // Move the file
+			                channelSftp.rename(sourceFilePath, destinationFilePath);
+			                System.out.println("Moved file: " + sourceFilePath + " to " + destinationFilePath);
+	                	}
+	                }else {
+	                	String sourceFilePath = remoteDirectory + "/" + fileName;
+		                String destinationFilePath = sftpRemoteArchiveDirectory + "/" + fileName;
+	
+		                // Move the file
+		                channelSftp.rename(sourceFilePath, destinationFilePath);
+		                System.out.println("Moved file: " + sourceFilePath + " to " + destinationFilePath);
+	                }
 	            }
 	        }
 
@@ -180,7 +222,7 @@ public class Utility {
 	}
 
 	private static void downloadFiles(String host, int port, String username, String password, String passphrase,
-			String privateKeyPath, String downloadFilePath, String remoteDirectory) {
+			String privateKeyPath, String downloadFilePath, String remoteDirectory, String filePattern) {
 		try {
 			JSch jsch = new JSch();
 			Session session = jsch.getSession(username, host, port);
@@ -198,10 +240,19 @@ public class Utility {
 			for (ChannelSftp.LsEntry entry : fileList) {
 				if (!entry.getAttrs().isDir()) {
 					String remoteFileName = entry.getFilename();
-					String localFilePath = downloadFilePath + File.separator + remoteFileName;
-					channelSftp.get(remoteFileName, localFilePath);
-
-					System.out.println("File downloaded: " + remoteFileName);
+					if(filePattern!=null) {
+						if(remoteFileName.contains(filePattern)) {
+							String localFilePath = downloadFilePath + File.separator + remoteFileName;
+							channelSftp.get(remoteFileName, localFilePath);
+		
+							System.out.println("File downloaded: " + remoteFileName);
+						}
+					}else {
+						String localFilePath = downloadFilePath + File.separator + remoteFileName;
+						channelSftp.get(remoteFileName, localFilePath);
+	
+						System.out.println("File downloaded: " + remoteFileName);
+					}
 				}
 			}
 
