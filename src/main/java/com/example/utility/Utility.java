@@ -8,10 +8,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.*;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +23,17 @@ import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Cell;
+import com.itextpdf.layout.element.Paragraph;
+import com.itextpdf.layout.element.Table;
+
+import org.apache.commons.io.FilenameUtils;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 @Component
 public class Utility {
@@ -107,10 +120,11 @@ public class Utility {
 
 	public void downloadFilesFromSftpAndDecrypt(String downloadFilePath, String decryptFilePath, String passphrase,
 			String host, int port, String username, String password, String privateKeyPath, String remoteDirectory,
-			String sftpRemoteArchiveDirectory, boolean isProcessVoucherDetails, String archiveDownloadDirectory, String filePattern) {
+			String sftpRemoteArchiveDirectory, boolean isProcessVoucherDetails, String archiveDownloadDirectory,
+			String filePattern) {
 		try {
-			downloadFiles(host, port, username, password, passphrase, privateKeyPath, downloadFilePath,
-					remoteDirectory, filePattern);
+			downloadFiles(host, port, username, password, passphrase, privateKeyPath, downloadFilePath, remoteDirectory,
+					filePattern);
 			decryptFile(passphrase, privateKeyPath, downloadFilePath, decryptFilePath, isProcessVoucherDetails);
 			archiveSftpFiles(host, port, username, password, passphrase, privateKeyPath, downloadFilePath,
 					remoteDirectory, sftpRemoteArchiveDirectory, filePattern);
@@ -122,31 +136,33 @@ public class Utility {
 
 	private void archiveFiles(String downloadFilePath, String archiveDownloadDirectory) {
 		Path sourceDir = Paths.get(downloadFilePath);
-        Path destinationDir = Paths.get(archiveDownloadDirectory);
+		Path destinationDir = Paths.get(archiveDownloadDirectory);
 
-        try (Stream<Path> files = Files.list(sourceDir)) {
-            files.forEach(file -> {
-                try {
-                    // Check if the current path is a regular file (not a directory or symbolic link)
-                    if (Files.isRegularFile(file)) {
-                        // Define the target path in the destination directory
-                        Path targetPath = destinationDir.resolve(file.getFileName());
+		try (Stream<Path> files = Files.list(sourceDir)) {
+			files.forEach(file -> {
+				try {
+					// Check if the current path is a regular file (not a directory or symbolic
+					// link)
+					if (Files.isRegularFile(file)) {
+						// Define the target path in the destination directory
+						Path targetPath = destinationDir.resolve(file.getFileName());
 
-                        // Move the file to the target directory
-                        Files.move(file, targetPath, StandardCopyOption.REPLACE_EXISTING);
-                        System.out.println("Moved: " + file.getFileName());
-                    }
-                } catch (IOException e) {
-                    System.err.println("Failed to move file: " + file.getFileName() + " due to: " + e.getMessage());
-                }
-            });
-        } catch (IOException e) {
-            System.err.println("Failed to list files in the source directory: " + e.getMessage());
-        }
-    }
+						// Move the file to the target directory
+						Files.move(file, targetPath, StandardCopyOption.REPLACE_EXISTING);
+						System.out.println("Moved: " + file.getFileName());
+					}
+				} catch (IOException e) {
+					System.err.println("Failed to move file: " + file.getFileName() + " due to: " + e.getMessage());
+				}
+			});
+		} catch (IOException e) {
+			System.err.println("Failed to list files in the source directory: " + e.getMessage());
+		}
+	}
 
 	private void archiveSftpFiles(String host, int port, String username, String password, String passphrase,
-			String privateKeyPath, String downloadFilePath, String remoteDirectory, String sftpRemoteArchiveDirectory, String filePattern) {
+			String privateKeyPath, String downloadFilePath, String remoteDirectory, String sftpRemoteArchiveDirectory,
+			String filePattern) {
 
 		Session session = null;
 		ChannelSftp channelSftp = null;
@@ -168,30 +184,30 @@ public class Utility {
 			channelSftp.connect();
 
 			// List files in the source directory
-	        Vector<ChannelSftp.LsEntry> files = channelSftp.ls(remoteDirectory);
+			Vector<ChannelSftp.LsEntry> files = channelSftp.ls(remoteDirectory);
 
-	        for (ChannelSftp.LsEntry file : files) {
-	            if (!file.getAttrs().isDir()) {
-	                String fileName = file.getFilename();
-	                if(filePattern!=null) {
-	                	if(fileName.contains(filePattern)) {
-			                String sourceFilePath = remoteDirectory + "/" + fileName;
-			                String destinationFilePath = sftpRemoteArchiveDirectory + "/" + fileName;
-		
-			                // Move the file
-			                channelSftp.rename(sourceFilePath, destinationFilePath);
-			                System.out.println("Moved file: " + sourceFilePath + " to " + destinationFilePath);
-	                	}
-	                }else {
-	                	String sourceFilePath = remoteDirectory + "/" + fileName;
-		                String destinationFilePath = sftpRemoteArchiveDirectory + "/" + fileName;
-	
-		                // Move the file
-		                channelSftp.rename(sourceFilePath, destinationFilePath);
-		                System.out.println("Moved file: " + sourceFilePath + " to " + destinationFilePath);
-	                }
-	            }
-	        }
+			for (ChannelSftp.LsEntry file : files) {
+				if (!file.getAttrs().isDir()) {
+					String fileName = file.getFilename();
+					if (filePattern != null) {
+						if (fileName.contains(filePattern)) {
+							String sourceFilePath = remoteDirectory + "/" + fileName;
+							String destinationFilePath = sftpRemoteArchiveDirectory + "/" + fileName;
+
+							// Move the file
+							channelSftp.rename(sourceFilePath, destinationFilePath);
+							System.out.println("Moved file: " + sourceFilePath + " to " + destinationFilePath);
+						}
+					} else {
+						String sourceFilePath = remoteDirectory + "/" + fileName;
+						String destinationFilePath = sftpRemoteArchiveDirectory + "/" + fileName;
+
+						// Move the file
+						channelSftp.rename(sourceFilePath, destinationFilePath);
+						System.out.println("Moved file: " + sourceFilePath + " to " + destinationFilePath);
+					}
+				}
+			}
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -240,17 +256,17 @@ public class Utility {
 			for (ChannelSftp.LsEntry entry : fileList) {
 				if (!entry.getAttrs().isDir()) {
 					String remoteFileName = entry.getFilename();
-					if(filePattern!=null) {
-						if(remoteFileName.contains(filePattern)) {
+					if (filePattern != null) {
+						if (remoteFileName.contains(filePattern)) {
 							String localFilePath = downloadFilePath + File.separator + remoteFileName;
 							channelSftp.get(remoteFileName, localFilePath);
-		
+
 							System.out.println("File downloaded: " + remoteFileName);
 						}
-					}else {
+					} else {
 						String localFilePath = downloadFilePath + File.separator + remoteFileName;
 						channelSftp.get(remoteFileName, localFilePath);
-	
+
 						System.out.println("File downloaded: " + remoteFileName);
 					}
 				}
@@ -324,5 +340,57 @@ public class Utility {
 			claimId = Integer.parseInt(extracted);
 		}
 		return claimId;
+	}
+
+	public void migaretCsvToPdfFiles(String csvFilePath, String pdfFilePath) {
+		try {
+			List<Path> filePaths = listFiles(csvFilePath);
+			for (Path filePath : filePaths) {
+				File file = filePath.toFile();
+				PdfWriter writer = new PdfWriter(
+						pdfFilePath + File.separator + FilenameUtils.removeExtension(file.getName()) + ".pdf");
+
+				PdfDocument pdfDoc = new PdfDocument(writer);
+
+				Document document = new Document(pdfDoc);
+
+				Path path = Paths.get(file.getAbsolutePath());
+				List<String> lines = Files.readAllLines(path);
+
+				if (!lines.isEmpty()) {
+					String[] headers = lines.get(0).split(",");
+					Table table = new Table(headers.length);
+
+					for (String header : headers) {
+						table.addHeaderCell(new Cell().add(new Paragraph(header)));
+					}
+
+					for (int i = 1; i < lines.size(); i++) {
+						String[] values = lines.get(i).split(",");
+						for (String value : values) {
+							table.addCell(new Cell().add(new Paragraph(value)));
+						}
+					}
+
+					document.add(table);
+				}
+
+				document.close();
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static List<Path> listFiles(String directoryPath) throws IOException {
+		List<Path> filePaths = new ArrayList<>();
+		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(Paths.get(directoryPath))) {
+			for (Path path : directoryStream) {
+				if (Files.isRegularFile(path)) {
+					filePaths.add(path);
+				}
+			}
+		}
+		return filePaths;
 	}
 }
