@@ -27,41 +27,43 @@ public class JobRunner {
 		this.jobLauncher = jobLauncher;
 	}
 
-	@Scheduled(cron = "0 0/2 * ? * *")
+	@Scheduled(cron = "0 0/5 * ? * *")
 	public void run() throws Exception {
 		JobParameters jobParameters = new JobParametersBuilder().addLong("time", System.currentTimeMillis())
 				.toJobParameters();
 		JobExecution jobExecution = jobLauncher.run(importUserJob, jobParameters);
 		BatchStatus batchStatus = jobExecution.getStatus();
-	//	System.out.println("Batch Status: " + batchStatus);
-	}
-
-	@Scheduled(cron = "0 0/1 * ? * *")
-	public void prepareFile() throws Exception {
-		System.out.println("Batch Job 2 started ");
-		fileWriteService.generateFile();
-		
-	}
-
-	@Scheduled(cron = "0 0/1 * ? * *")
-	public void downloadFileAndDecrpt() throws Exception {
-		System.out.println("Batch Job 3 started ");
-		fileWriteService.downloadAndDecrptFile();
-		
 	}
 	
+//	@Scheduled(cron = "0 0/100 * ? * *")
+//	public void processJobs() throws Exception {
+//		System.out.println("Batch Job final started ");
+//		fileWriteService.runFileWriterJob();
+//	}
 
-	@Scheduled(cron = "0 0/20 * ? * *")
-	public void downloadAndDecryptProcessedFiles() throws Exception {
-		System.out.println("Batch Job 4 started ");
-		fileWriteService.downloadAndDecryptProcessedFiles();
-		
-	}
 	
-	@Scheduled(cron = "0 0/20 * ? * *")
-	public void csvToPdfMigrationJob() throws Exception {
-		System.out.println("Batch Job 5 started ");
-		fileWriteService.migrateCsvToPdfFiles();
-		
-	}
+//	@Scheduled(cron = "0 0/1 * ? * *")
+//	public void prepareFile() throws Exception {
+//		System.out.println("Batch Job 2 started ");
+//		fileWriteService.generateFile();
+//	}
+//
+//	@Scheduled(cron = "0 0/100 * ? * *")
+//	public void downloadFileAndDecrpt() throws Exception {
+//		System.out.println("Batch Job 3 started ");
+//		fileWriteService.downloadAndDecrptFile();
+//	}
+	
+
+//	@Scheduled(cron = "0 0/200 * ? * *")
+//	public void downloadAndDecryptProcessedFiles() throws Exception {
+//		System.out.println("Batch Job 4 started ");
+//		fileWriteService.downloadAndDecryptProcessedFiles();
+//	}
+//	
+//	@Scheduled(cron = "0 0/200 * ? * *")
+//	public void csvToPdfMigrationJob() throws Exception {
+//		System.out.println("Batch Job 5 started ");
+//		fileWriteService.migrateCsvToPdfFiles();
+//	}
 }
