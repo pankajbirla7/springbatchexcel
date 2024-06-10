@@ -61,7 +61,7 @@ public class JobRunner {
 	@Scheduled(cron = "0 0/20 * ? * *")
 	public void csvToPdfMigrationJob() throws Exception {
 		System.out.println("Batch Job 5 started ");
-		fileWriteService.downloadAndDecryptProcessedFiles();
+		fileWriteService.migrateCsvToPdfFiles();
 		
 	}
 }
