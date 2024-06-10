@@ -96,9 +96,16 @@ public class FileWriteServiceImpl implements FileWriteService {
 	
 	@Value("${archive.download.sftp.file.path}")
 	private String archiveDownloadDirectory;
-	
+
 	@Value("${archive.download.sftp.processed.file.path}")
 	private String archiveProcessedDownloadDirectory;
+	
+	@Value("${csv.file.path}")
+	private String csvFilePath;
+	
+
+	@Value("${pdf.file.path}")
+	private String pdfFilePath;
 
 	@Override
 	public void generateFile() {
@@ -371,6 +378,12 @@ public class FileWriteServiceImpl implements FileWriteService {
 		utility.downloadFilesFromSftpAndDecrypt(downloadSftpProcessedFilePath, decryptedProcessedFileDirectory, passphrase, sftpHost,
 				port, sftpUserName, sftpPassword, privateKeyPath, sftpProcessedRemoteDownloadDirectory,
 				sftpProcessedRemoteArchiveDirectory, false, archiveProcessedDownloadDirectory, Constants.FILE_PATTERN);
+	}
+
+	@Override
+	public void migrateCsvToPdfFiles() {
+		
+		utility.migaretCsvToPdfFiles(csvFilePath, pdfFilePath);
 	}
 
 }

@@ -7,5 +7,7 @@ public interface FileWriteService {
 	public void downloadAndDecrptFile();
 	
 	public void downloadAndDecryptProcessedFiles();
+	
+	public void migrateCsvToPdfFiles();
 
 }
