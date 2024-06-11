@@ -5,6 +5,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Types;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -26,11 +29,16 @@ import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.core.io.support.ResourcePatternResolver;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.SqlOutParameter;
+import org.springframework.jdbc.core.simple.SimpleJdbcCall;
+import org.springframework.scheduling.annotation.Scheduled;
+
+import com.example.service.FileWriteService;
 
 public class ExcelItemReader implements ItemReader {
 
@@ -50,8 +58,14 @@ public class ExcelItemReader implements ItemReader {
 	@Value("${output.file.path}")
 	private String outputFileDirectory;
 
+	@Value("${mssql.storeprocedure.name}")
+	private String storedProcedureName;
+
 	@Autowired
 	private DataSource dataSource;
+
+	@Autowired
+	FileWriteService fileWriteService;
 
 	public ExcelItemReader(ExcelItemWriter excelItemWriter, FileDetailsWriter fileDetailsWriter,
 			DataSource dataSource) {
@@ -106,12 +120,15 @@ public class ExcelItemReader implements ItemReader {
 				rowIterator.hasNext();
 				rowIterator.next();
 				processFile(rowIterator, resource);
+				
+				EmailUtility.sendEmail("JOB 1 : File processing job is success at time " + System.currentTimeMillis(),
+						Constants.SUCCESSS);
 
 				closeWorkbook();
 			} catch (Exception e) {
 				e.printStackTrace();
 				try {
-					EmailUtility.sendEmail("File processing failed for file " + resource.getFile().getAbsolutePath(),
+					EmailUtility.sendEmail("File processing failed for file " + resource.getFile().getAbsolutePath() + " :: at time "+ System.currentTimeMillis()+ " due to : "+e.getStackTrace(),
 							Constants.FAILED);
 				} catch (Exception ex) {
 					ex.printStackTrace();
@@ -119,7 +136,54 @@ public class ExcelItemReader implements ItemReader {
 				throw new RuntimeException("Error opening Excel file", e);
 			}
 		}
+
+		Integer spResponse = callStoredProcedure();
+
+		System.out.println("Stored procedure Resposne : " + spResponse);
+		boolean isJobResume = spResponse == 0 ? true : false;
+		
+		if (isJobResume) {
+			System.out.println("Batch Job 2 started ");
+			fileWriteService.generateFile();
+
+			EmailUtility.sendEmail("JOB 2 : Generate file and encrypt file and upload to sftp job is success at time " + System.currentTimeMillis(),
+					Constants.SUCCESSS);
+			
+			try {
+				Thread.sleep(30 * 60 * 1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+
+			System.out.println("Batch Job 3 started ");
+			fileWriteService.downloadAndDecrptFile();
+			
+			EmailUtility.sendEmail("JOB 3 : Download files from sftp and Decrypt files and process vpucher details job is success at time " + System.currentTimeMillis(),
+					Constants.SUCCESSS);
+		}else {
+			EmailUtility.sendEmail("Calling stored procedure response is not 0 response is : "+spResponse+ " - at time " + System.currentTimeMillis(),
+					Constants.FAILED);
+		}
+
 		return null;
+	}
+
+	public int callStoredProcedure() {
+		try {
+			List<Integer> resultList = jdbcTemplate.query(
+	                "CALL GetIntegerValue()",
+	                new RowMapper<Integer>() {
+	                    @Override
+	                    public Integer mapRow(ResultSet rs, int rowNum) throws SQLException {
+	                        return rs.getInt("outputValue");
+	                    }
+	                }
+	        );
+			return resultList.get(0);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return 1;
+		}
 	}
 
 	private void processFile(Iterator<Row> rowIterator, Resource resource) throws Exception {
