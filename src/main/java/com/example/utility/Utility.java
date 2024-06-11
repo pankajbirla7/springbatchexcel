@@ -121,7 +121,7 @@ public class Utility {
 	public void downloadFilesFromSftpAndDecrypt(String downloadFilePath, String decryptFilePath, String passphrase,
 			String host, int port, String username, String password, String privateKeyPath, String remoteDirectory,
 			String sftpRemoteArchiveDirectory, boolean isProcessVoucherDetails, String archiveDownloadDirectory,
-			String filePattern) {
+			String filePattern) throws Exception {
 		try {
 			downloadFiles(host, port, username, password, passphrase, privateKeyPath, downloadFilePath, remoteDirectory,
 					filePattern);
@@ -131,10 +131,11 @@ public class Utility {
 			archiveFiles(downloadFilePath, archiveDownloadDirectory);
 		} catch (Exception e) {
 			e.printStackTrace();
+			throw e;
 		}
 	}
 
-	private void archiveFiles(String downloadFilePath, String archiveDownloadDirectory) {
+	private void archiveFiles(String downloadFilePath, String archiveDownloadDirectory) throws Exception {
 		Path sourceDir = Paths.get(downloadFilePath);
 		Path destinationDir = Paths.get(archiveDownloadDirectory);
 
@@ -155,14 +156,15 @@ public class Utility {
 					System.err.println("Failed to move file: " + file.getFileName() + " due to: " + e.getMessage());
 				}
 			});
-		} catch (IOException e) {
+		} catch (Exception e) {
 			System.err.println("Failed to list files in the source directory: " + e.getMessage());
+			throw e;
 		}
 	}
 
 	private void archiveSftpFiles(String host, int port, String username, String password, String passphrase,
 			String privateKeyPath, String downloadFilePath, String remoteDirectory, String sftpRemoteArchiveDirectory,
-			String filePattern) {
+			String filePattern) throws Exception {
 
 		Session session = null;
 		ChannelSftp channelSftp = null;
@@ -211,6 +213,7 @@ public class Utility {
 
 		} catch (Exception e) {
 			e.printStackTrace();
+			throw e;
 		} finally {
 			if (channelSftp != null) {
 				channelSftp.disconnect();
@@ -234,11 +237,12 @@ public class Utility {
 
 		} catch (Exception e) {
 			e.printStackTrace();
+			throw e;
 		}
 	}
 
 	private static void downloadFiles(String host, int port, String username, String password, String passphrase,
-			String privateKeyPath, String downloadFilePath, String remoteDirectory, String filePattern) {
+			String privateKeyPath, String downloadFilePath, String remoteDirectory, String filePattern) throws Exception {
 		try {
 			JSch jsch = new JSch();
 			Session session = jsch.getSession(username, host, port);
@@ -276,6 +280,7 @@ public class Utility {
 			session.disconnect();
 		} catch (Exception e) {
 			e.printStackTrace();
+			throw e;
 		}
 		System.out.println("All files downloaded successfully.");
 	}

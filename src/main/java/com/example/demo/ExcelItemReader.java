@@ -120,12 +120,15 @@ public class ExcelItemReader implements ItemReader {
 				rowIterator.hasNext();
 				rowIterator.next();
 				processFile(rowIterator, resource);
+				
+				EmailUtility.sendEmail("JOB 1 : File processing job is success at time " + System.currentTimeMillis(),
+						Constants.SUCCESSS);
 
 				closeWorkbook();
 			} catch (Exception e) {
 				e.printStackTrace();
 				try {
-					EmailUtility.sendEmail("File processing failed for file " + resource.getFile().getAbsolutePath(),
+					EmailUtility.sendEmail("File processing failed for file " + resource.getFile().getAbsolutePath() + " :: at time "+ System.currentTimeMillis()+ " due to : "+e.getStackTrace(),
 							Constants.FAILED);
 				} catch (Exception ex) {
 					ex.printStackTrace();
@@ -134,20 +137,18 @@ public class ExcelItemReader implements ItemReader {
 			}
 		}
 
-		try {
-			Thread.sleep(30 * 60 * 1000);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-
 		Integer spResponse = callStoredProcedure();
 
 		System.out.println("Stored procedure Resposne : " + spResponse);
 		boolean isJobResume = spResponse == 0 ? true : false;
+		
 		if (isJobResume) {
 			System.out.println("Batch Job 2 started ");
 			fileWriteService.generateFile();
 
+			EmailUtility.sendEmail("JOB 2 : Generate file and encrypt file and upload to sftp job is success at time " + System.currentTimeMillis(),
+					Constants.SUCCESSS);
+			
 			try {
 				Thread.sleep(30 * 60 * 1000);
 			} catch (InterruptedException e) {
@@ -156,6 +157,12 @@ public class ExcelItemReader implements ItemReader {
 
 			System.out.println("Batch Job 3 started ");
 			fileWriteService.downloadAndDecrptFile();
+			
+			EmailUtility.sendEmail("JOB 3 : Download files from sftp and Decrypt files and process vpucher details job is success at time " + System.currentTimeMillis(),
+					Constants.SUCCESSS);
+		}else {
+			EmailUtility.sendEmail("Calling stored procedure response is not 0 response is : "+spResponse+ " - at time " + System.currentTimeMillis(),
+					Constants.FAILED);
 		}
 
 		return null;

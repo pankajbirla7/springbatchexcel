@@ -15,6 +15,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import com.example.demo.Constants;
+import com.example.demo.EmailUtility;
 import com.example.demo.FileDetails;
 import com.example.dto.StdClaim;
 import com.example.dto.VohDetails;
@@ -102,29 +103,39 @@ public class FileWriteServiceImpl implements FileWriteService {
 	
 	@Value("${csv.file.path}")
 	private String csvFilePath;
-	
 
 	@Value("${pdf.file.path}")
 	private String pdfFilePath;
+	
+//	#################################################################################
+	
 
 	@Override
 	public void generateFile() {
-
-		List<StdClaim> stdClaims = stdClaimDao.getStdClaimDetails(Constants.NEW);
-		System.out.println("total stdClaimList " + stdClaims.size());
-
-		for (StdClaim stdClaim : stdClaims) {
-			FileDetails fileDetails = fileDao.getFileDetailsByFileID(stdClaim.getFileid());
-			int claimCount = stdClaimDao.getClaimCountByDateEntered(fileDetails.getSubmitDate(), Constants.NEW);
-			System.out.println("Total Cliam count for stadClaim date value greater than : " + " for file Id : "
-					+ stdClaim.getFileid());
-
-			List<StdClaim> stdClaims2 = stdClaimDao.getClaimIds(fileDetails.getSubmitDate(), Constants.NEW);
-			String filePath = writeFirstClaimCountRowInFile(claimCount, stdClaim, stdClaims2, fileDetails);
-
-			encryptFileAndUploadToSftp(filePath);
-			stdClaimDao.updateStandardDetailSfsDate(stdClaims2);
-			break;
+		try {
+			List<StdClaim> stdClaims = stdClaimDao.getStdClaimDetails(Constants.NEW);
+			System.out.println("total stdClaimList " + stdClaims.size());
+	
+			for (StdClaim stdClaim : stdClaims) {
+				FileDetails fileDetails = fileDao.getFileDetailsByFileID(stdClaim.getFileid());
+				int claimCount = stdClaimDao.getClaimCountByDateEntered(fileDetails.getSubmitDate(), Constants.NEW);
+				System.out.println("Total Cliam count for stadClaim date value greater than : " + " for file Id : "
+						+ stdClaim.getFileid());
+	
+				List<StdClaim> stdClaims2 = stdClaimDao.getClaimIds(fileDetails.getSubmitDate(), Constants.NEW);
+				String filePath = writeFirstClaimCountRowInFile(claimCount, stdClaim, stdClaims2, fileDetails);
+				
+				System.out.println("While generating and encrypting file process teh filepath is : "+filePath);
+				if(filePath!=null) {
+					encryptFileAndUploadToSftp(filePath);
+					stdClaimDao.updateStandardDetailSfsDate(stdClaims2);
+				}
+				break;
+			}
+		}catch (Exception e) {
+			e.printStackTrace();
+			EmailUtility.sendEmail("Error while generating and encrypting file process at time " + System.currentTimeMillis()+ " due to : "+e.getStackTrace(),
+					Constants.FAILED);
 		}
 	}
 ///////////////////////////////Encrypt and Upload File/////////////////////////////////////
@@ -367,17 +378,29 @@ public class FileWriteServiceImpl implements FileWriteService {
 	@Override
 	public void downloadAndDecrptFile() {
 
-		utility.downloadFilesFromSftpAndDecrypt(downloadSftpFilePath, decryptedFileDirectory, passphrase, sftpHost,
-				port, sftpUserName, sftpPassword, privateKeyPath, sftpRemoteDownloadDirectory,
-				sftpRemoteArchiveDirectory, true, archiveDownloadDirectory, null);
+		try {
+			utility.downloadFilesFromSftpAndDecrypt(downloadSftpFilePath, decryptedFileDirectory, passphrase, sftpHost,
+					port, sftpUserName, sftpPassword, privateKeyPath, sftpRemoteDownloadDirectory,
+					sftpRemoteArchiveDirectory, true, archiveDownloadDirectory, null);
+		} catch (Exception e) {
+			e.printStackTrace();
+			EmailUtility.sendEmail("downloadAndDecrptFile job is failed at time " + System.currentTimeMillis()+ " due to : "+e.getStackTrace(),
+					Constants.FAILED);
+		}
 	}
 	
 	@Override
 	public void downloadAndDecryptProcessedFiles() {
 
-		utility.downloadFilesFromSftpAndDecrypt(downloadSftpProcessedFilePath, decryptedProcessedFileDirectory, passphrase, sftpHost,
-				port, sftpUserName, sftpPassword, privateKeyPath, sftpProcessedRemoteDownloadDirectory,
-				sftpProcessedRemoteArchiveDirectory, false, archiveProcessedDownloadDirectory, Constants.FILE_PATTERN);
+		try {
+			utility.downloadFilesFromSftpAndDecrypt(downloadSftpProcessedFilePath, decryptedProcessedFileDirectory, passphrase, sftpHost,
+					port, sftpUserName, sftpPassword, privateKeyPath, sftpProcessedRemoteDownloadDirectory,
+					sftpProcessedRemoteArchiveDirectory, false, archiveProcessedDownloadDirectory, Constants.FILE_PATTERN);
+		} catch (Exception e) {
+			e.printStackTrace();
+			EmailUtility.sendEmail("downloadAndDecryptProcessedFiles job is failed at time " + System.currentTimeMillis()+ " due to : "+e.getStackTrace(),
+					Constants.FAILED);
+		}
 	}
 
 	@Override
