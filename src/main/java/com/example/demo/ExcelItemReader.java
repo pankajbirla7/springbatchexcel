@@ -171,7 +171,7 @@ public class ExcelItemReader implements ItemReader {
 	public int callStoredProcedure() {
 		try {
 			List<Integer> resultList = jdbcTemplate.query(
-	                "CALL GetIntegerValue()",
+	                "CALL "+storedProcedureName,
 	                new RowMapper<Integer>() {
 	                    @Override
 	                    public Integer mapRow(ResultSet rs, int rowNum) throws SQLException {
