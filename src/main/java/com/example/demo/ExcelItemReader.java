@@ -137,6 +137,7 @@ public class ExcelItemReader implements ItemReader {
 			}
 		}
 
+		try {
 		Integer spResponse = callStoredProcedure();
 
 		System.out.println("Stored procedure Resposne : " + spResponse);
@@ -162,6 +163,11 @@ public class ExcelItemReader implements ItemReader {
 					Constants.SUCCESSS);
 		}else {
 			EmailUtility.sendEmail("Calling stored procedure response is not 0 response is : "+spResponse+ " - at time " + System.currentTimeMillis(),
+					Constants.FAILED);
+		}
+		}catch(Exception e) {
+			e.printStackTrace();
+			EmailUtility.sendEmail("Calling stored procedure and second and third job error occured - at time " + System.currentTimeMillis(),
 					Constants.FAILED);
 		}
 
