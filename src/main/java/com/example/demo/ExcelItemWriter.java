@@ -16,8 +16,8 @@ public class ExcelItemWriter implements ItemWriter<MyDataObject> {
 
 	@Override
 	public void write(Chunk<? extends MyDataObject> chunk) throws Exception {
-		System.out.println("Total items to write in db : " + chunk.size());
 		if (chunk != null && chunk.getItems().size() > 0) {
+			System.out.println("Total items to write in db : " + chunk.getItems().size());
 			for (MyDataObject item : chunk.getItems()) {
 				if(item.getFein()!=null) {
 					System.out.println("Writing item: " + item);
@@ -27,6 +27,8 @@ public class ExcelItemWriter implements ItemWriter<MyDataObject> {
 					continue;
 				}
 			}
+		}else {
+			System.out.println("Total items to write in db : " + chunk.size());
 		}
 	}
 }
