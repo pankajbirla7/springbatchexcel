@@ -1,5 +1,6 @@
 package com.example.demo;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -37,6 +38,10 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.SqlOutParameter;
 import org.springframework.jdbc.core.simple.SimpleJdbcCall;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallbackWithoutResult;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.example.service.FileWriteService;
 
@@ -67,9 +72,13 @@ public class ExcelItemReader implements ItemReader {
 	@Autowired
 	FileWriteService fileWriteService;
 
-	public ExcelItemReader(ExcelItemWriter excelItemWriter, FileDetailsWriter fileDetailsWriter,
-			DataSource dataSource) {
+	private final TransactionTemplate transactionTemplate;
+
+	public ExcelItemReader(ExcelItemWriter excelItemWriter, FileDetailsWriter fileDetailsWriter, DataSource dataSource,
+			PlatformTransactionManager transactionManager) {
 		try {
+			this.transactionTemplate = new TransactionTemplate(transactionManager);
+			transactionTemplate.setPropagationBehavior(TransactionTemplate.PROPAGATION_REQUIRES_NEW);
 			this.resourceIndex = 0;
 			this.itemWriter = excelItemWriter;
 			this.fileDetailsWriter = fileDetailsWriter;
@@ -111,7 +120,7 @@ public class ExcelItemReader implements ItemReader {
 	}
 
 	@Override
-	public MyDataObject read() {
+	public MyDataObject read() throws IOException {
 		resources = inputFiles();
 		for (Resource resource : resources) {
 			try (InputStream inputStream = resource.getInputStream()) {
@@ -119,56 +128,68 @@ public class ExcelItemReader implements ItemReader {
 				this.rowIterator = workbook.getSheetAt(0).iterator();
 				rowIterator.hasNext();
 				rowIterator.next();
-				processFile(rowIterator, resource);
-				
-				EmailUtility.sendEmail("JOB 1 : File processing job is success at time " + System.currentTimeMillis(),
-						Constants.SUCCESSS);
+				transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+					@Override
+					protected void doInTransactionWithoutResult(TransactionStatus status) {
+						try {
+							processFile(rowIterator, resource);
+							EmailUtility.sendEmail(
+									"JOB 1 : File processing job is success at time " + System.currentTimeMillis(),
+									Constants.SUCCESSS);
+						} catch (Exception e) {
+							e.printStackTrace();
+							EmailUtility.sendEmail(
+									"JOB 1 : File processing job is failed at time " + System.currentTimeMillis(),
+									Constants.SUCCESSS);
+						}
+					}
+				});
 
 				closeWorkbook();
 			} catch (Exception e) {
 				e.printStackTrace();
-				try {
-					EmailUtility.sendEmail("File processing failed for file " + resource.getFile().getAbsolutePath() + " :: at time "+ System.currentTimeMillis()+ " due to : "+e.getStackTrace(),
-							Constants.FAILED);
-				} catch (Exception ex) {
-					ex.printStackTrace();
-				}
+				EmailUtility.sendEmail("File processing failed for file " + resource.getFile().getAbsolutePath()
+						+ " :: at time " + System.currentTimeMillis() + " due to : " + e.getStackTrace(),
+						Constants.FAILED);
 				throw new RuntimeException("Error opening Excel file", e);
 			}
 		}
 
 		try {
-		Integer spResponse = callStoredProcedure();
+			Integer spResponse = callStoredProcedure();
 
-		System.out.println("Stored procedure Resposne : " + spResponse);
-		boolean isJobResume = spResponse == 0 ? true : false;
-		
-		if (isJobResume) {
-			System.out.println("Batch Job 2 started ");
-			fileWriteService.generateFile();
+			System.out.println("Stored procedure Resposne : " + spResponse);
+			boolean isJobResume = spResponse == 0 ? true : false;
 
-			EmailUtility.sendEmail("JOB 2 : Generate file and encrypt file and upload to sftp job is success at time " + System.currentTimeMillis(),
-					Constants.SUCCESSS);
-			
-			try {
-				Thread.sleep(30 * 60 * 1000);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+			if (isJobResume) {
+				System.out.println("Batch Job 2 started ");
+				fileWriteService.generateFile();
+
+				EmailUtility
+						.sendEmail("JOB 2 : Generate file and encrypt file and upload to sftp job is success at time "
+								+ System.currentTimeMillis(), Constants.SUCCESSS);
+
+				try {
+					Thread.sleep(30 * 60 * 1000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+
+				System.out.println("Batch Job 3 started ");
+				fileWriteService.downloadAndDecrptFile();
+
+				EmailUtility.sendEmail(
+						"JOB 3 : Download files from sftp and Decrypt files and process vpucher details job is success at time "
+								+ System.currentTimeMillis(),
+						Constants.SUCCESSS);
+			} else {
+				EmailUtility.sendEmail("Calling stored procedure response is not 0 response is : " + spResponse
+						+ " - at time " + System.currentTimeMillis(), Constants.FAILED);
 			}
-
-			System.out.println("Batch Job 3 started ");
-			fileWriteService.downloadAndDecrptFile();
-			
-			EmailUtility.sendEmail("JOB 3 : Download files from sftp and Decrypt files and process vpucher details job is success at time " + System.currentTimeMillis(),
-					Constants.SUCCESSS);
-		}else {
-			EmailUtility.sendEmail("Calling stored procedure response is not 0 response is : "+spResponse+ " - at time " + System.currentTimeMillis(),
-					Constants.FAILED);
-		}
-		}catch(Exception e) {
+		} catch (Exception e) {
 			e.printStackTrace();
-			EmailUtility.sendEmail("Calling stored procedure and second and third job error occured - at time " + System.currentTimeMillis(),
-					Constants.FAILED);
+			EmailUtility.sendEmail("Calling stored procedure and second and third job error occured - at time "
+					+ System.currentTimeMillis(), Constants.FAILED);
 		}
 
 		return null;
@@ -176,15 +197,12 @@ public class ExcelItemReader implements ItemReader {
 
 	public int callStoredProcedure() {
 		try {
-			List<Integer> resultList = jdbcTemplate.query(
-	                "CALL "+storedProcedureName,
-	                new RowMapper<Integer>() {
-	                    @Override
-	                    public Integer mapRow(ResultSet rs, int rowNum) throws SQLException {
-	                        return rs.getInt("outputValue");
-	                    }
-	                }
-	        );
+			List<Integer> resultList = jdbcTemplate.query("CALL " + storedProcedureName, new RowMapper<Integer>() {
+				@Override
+				public Integer mapRow(ResultSet rs, int rowNum) throws SQLException {
+					return rs.getInt("outputValue");
+				}
+			});
 			return resultList.get(0);
 		} catch (Exception e) {
 			e.printStackTrace();
