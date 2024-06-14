@@ -140,7 +140,7 @@ public class ExcelItemReader implements ItemReader {
 							e.printStackTrace();
 							EmailUtility.sendEmail(
 									"JOB 1 : File processing job is failed at time " + System.currentTimeMillis(),
-									Constants.SUCCESSS);
+									Constants.FAILED);
 						}
 					}
 				});
@@ -163,12 +163,25 @@ public class ExcelItemReader implements ItemReader {
 
 			if (isJobResume) {
 				System.out.println("Batch Job 2 started ");
-				fileWriteService.generateFile();
+				transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+					@Override
+					protected void doInTransactionWithoutResult(TransactionStatus status) {
+						try {
+							fileWriteService.generateFile();
 
-				EmailUtility
-						.sendEmail("JOB 2 : Generate file and encrypt file and upload to sftp job is success at time "
-								+ System.currentTimeMillis(), Constants.SUCCESSS);
+							EmailUtility
+									.sendEmail("JOB 2 : Generate file and encrypt file and upload to sftp job is success at time "
+											+ System.currentTimeMillis(), Constants.SUCCESSS);
 
+						} catch (Exception e) {
+							e.printStackTrace();
+							EmailUtility.sendEmail(
+									"JOB 2 : Generate file and encrypt file and upload to sftp job is failed at time " + System.currentTimeMillis(),
+									Constants.FAILED);
+						}
+					}
+				});
+				
 				try {
 					Thread.sleep(30 * 60 * 1000);
 				} catch (InterruptedException e) {
