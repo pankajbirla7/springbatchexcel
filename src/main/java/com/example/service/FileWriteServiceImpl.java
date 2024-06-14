@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -24,6 +26,8 @@ import com.example.utility.Utility;
 
 @Service
 public class FileWriteServiceImpl implements FileWriteService {
+	
+	static final Logger logger = LoggerFactory.getLogger(FileWriteServiceImpl.class);
 
 	@Autowired
 	public JdbcTemplate jdbcTemplate;
@@ -114,18 +118,18 @@ public class FileWriteServiceImpl implements FileWriteService {
 	public void generateFile() {
 		try {
 			List<StdClaim> stdClaims = stdClaimDao.getStdClaimDetails(Constants.NEW);
-			System.out.println("total stdClaimList " + stdClaims.size());
+			logger.info("total stdClaimList " + stdClaims.size());
 	
 			for (StdClaim stdClaim : stdClaims) {
 				FileDetails fileDetails = fileDao.getFileDetailsByFileID(stdClaim.getFileid());
 				int claimCount = stdClaimDao.getClaimCountByDateEntered(fileDetails.getSubmitDate(), Constants.NEW);
-				System.out.println("Total Cliam count for stadClaim date value greater than : " + " for file Id : "
+				logger.info("Total Cliam count for stadClaim date value greater than : " + " for file Id : "
 						+ stdClaim.getFileid());
 	
 				List<StdClaim> stdClaims2 = stdClaimDao.getClaimIds(fileDetails.getSubmitDate(), Constants.NEW);
 				String filePath = writeFirstClaimCountRowInFile(claimCount, stdClaim, stdClaims2, fileDetails);
 				
-				System.out.println("While generating and encrypting file process teh filepath is : "+filePath);
+				logger.info("While generating and encrypting file process teh filepath is : "+filePath);
 				if(filePath!=null) {
 					encryptFileAndUploadToSftp(filePath);
 					stdClaimDao.updateStandardDetailSfsDate(stdClaims2);
@@ -134,6 +138,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 			}
 		}catch (Exception e) {
 			e.printStackTrace();
+			logger.error("generateFile(): Error occured while gennerating file :: "+Utility.getStackTrace(e));
 			EmailUtility.sendEmail("Error while generating and encrypting file process at time " + System.currentTimeMillis()+ " due to : "+e.getStackTrace(),
 					Constants.FAILED);
 		}
@@ -171,7 +176,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 		// Write data to the file
 		try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
 			writer.write(firstRow);
-			System.out.println("First Row Data written to file successfully.");
+			logger.info("First Row Data written to file successfully. "+firstRow);
 			int count = 0;
 
 			int dohTransCtrlNo = 0;
@@ -209,7 +214,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 				writer.newLine();
 				writer.write(secondRow);
 
-				System.out.println("Second Row DOH written successfully.");
+				logger.info("Second Row DOH written successfully.");
 
 				transCtrlNo++;
 
@@ -286,7 +291,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 
 					writer.newLine();
 					writer.write(thirdRow);
-					System.out.println("Third Row VOH written successfully.");
+					logger.info("Third Row VOH written successfully.");
 
 					int voucherLineNo = 0;
 					transCtrlNo++;
@@ -304,7 +309,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 
 					writer.newLine();
 					writer.write(fourthRow);
-					System.out.println("Fourth Row VOL written successfully.");
+					logger.info("Fourth Row VOL written successfully.");
 
 					// Write VOD record
 					transCtrlNo++;
@@ -325,7 +330,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 
 					writer.newLine();
 					writer.write(fifthRow);
-					System.out.println("Fifth Row VOD written successfully.");
+					logger.info("Fifth Row VOD written successfully.");
 				}
 			}
 		} catch (Exception e) {
@@ -384,6 +389,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 					sftpRemoteArchiveDirectory, true, archiveDownloadDirectory, null);
 		} catch (Exception e) {
 			e.printStackTrace();
+			logger.error("Error occured during downlaod and decrypt file due to :: "+Utility.getStackTrace(e));
 			EmailUtility.sendEmail("downloadAndDecrptFile job is failed at time " + System.currentTimeMillis()+ " due to : "+e.getStackTrace(),
 					Constants.FAILED);
 		}
@@ -398,6 +404,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 					sftpProcessedRemoteArchiveDirectory, false, archiveProcessedDownloadDirectory, Constants.FILE_PATTERN);
 		} catch (Exception e) {
 			e.printStackTrace();
+			logger.error("Error occured during downlaod and decrypt processed file due to :: "+Utility.getStackTrace(e));
 			EmailUtility.sendEmail("downloadAndDecryptProcessedFiles job is failed at time " + System.currentTimeMillis()+ " due to : "+e.getStackTrace(),
 					Constants.FAILED);
 		}

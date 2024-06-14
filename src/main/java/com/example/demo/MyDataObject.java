@@ -84,4 +84,11 @@ public class MyDataObject {
 		this.statusCode = statusCode;
 	}
 
+	@Override
+	public String toString() {
+		return "MyDataObject [id=" + id + ", fein=" + fein + ", cin=" + cin + ", ndc=" + ndc + ", dateEntered="
+				+ dateEntered + ", dfilled=" + dfilled + ", fileId=" + fileId + ", statusCode=" + statusCode + "]";
+	}
+
+	
 }
