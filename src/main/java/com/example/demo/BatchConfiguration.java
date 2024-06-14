@@ -59,7 +59,7 @@ public class BatchConfiguration {
 	
 	@Bean
     public ExcelItemReader customExcelItemReader() {
-        return new ExcelItemReader(excelItemWriter(), fileDetails(), dataSource);
+        return new ExcelItemReader(excelItemWriter(), fileDetails(), dataSource, transactionManager);
     }
 
 	@Bean
