@@ -9,12 +9,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.SecureRandom;
-import java.security.Security;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.ArrayList;
+
 import org.apache.commons.io.FilenameUtils;
-import org.bouncycastle.bcpg.ArmoredOutputStream;
 import org.bouncycastle.openpgp.PGPCompressedData;
 import org.bouncycastle.openpgp.PGPCompressedDataGenerator;
 import org.bouncycastle.openpgp.PGPEncryptedData;
@@ -25,14 +24,16 @@ import org.bouncycastle.openpgp.PGPLiteralDataGenerator;
 import org.bouncycastle.openpgp.PGPObjectFactory;
 import org.bouncycastle.openpgp.PGPPublicKey;
 import org.bouncycastle.openpgp.PGPPublicKeyRing;
-import org.bouncycastle.openpgp.PGPPublicKeyRingCollection;
 import org.bouncycastle.openpgp.PGPUtil;
-import org.bouncycastle.openpgp.bc.BcPGPPublicKeyRingCollection;
 import org.bouncycastle.openpgp.operator.jcajce.JcaKeyFingerprintCalculator;
 import org.bouncycastle.openpgp.operator.jcajce.JcePGPDataEncryptorBuilder;
 import org.bouncycastle.openpgp.operator.jcajce.JcePublicKeyKeyEncryptionMethodGenerator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PublicKeyEncryption {
+	
+	static final Logger logger = LoggerFactory.getLogger(PublicKeyEncryption.class);
 
 	public static void encryptFile(String inputFilePath, String outputFilePath, String publicKeyPath)
 			throws IOException, PGPException {
@@ -119,6 +120,7 @@ public class PublicKeyEncryption {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
+			
 		}
 		return decryptedFiles;
 	}
@@ -149,10 +151,10 @@ public class PublicKeyEncryption {
 
 			// Wait for the process to complete
 			int exitCode = process.waitFor();
-			System.out.println("Process exited with code: " + exitCode);
+			logger.info("Process exited with code: " + exitCode);
 
 		} catch (IOException | InterruptedException e) {
-			System.out.println("File decryption error for encrypted file. " + encryptedFilePath);
+			logger.error("File decryption error for encrypted file. " + encryptedFilePath+" :: error occured due to :: "+Utility.getStackTrace(e));
 			e.printStackTrace();
 			return false;
 		}

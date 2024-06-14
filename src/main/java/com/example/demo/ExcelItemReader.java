@@ -8,7 +8,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Types;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -26,6 +25,8 @@ import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,17 +36,17 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.core.io.support.ResourcePatternResolver;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.core.SqlOutParameter;
-import org.springframework.jdbc.core.simple.SimpleJdbcCall;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.example.service.FileWriteService;
+import com.example.utility.Utility;
 
 public class ExcelItemReader implements ItemReader {
+
+	static final Logger logger = LoggerFactory.getLogger(ExcelItemReader.class);
 
 	private Iterator<Row> rowIterator;
 	private Workbook workbook;
@@ -87,6 +88,7 @@ public class ExcelItemReader implements ItemReader {
 			rowStatusMap = getRawStatusMap();
 			// openWorkbook();
 		} catch (Exception e) {
+			logger.error("Error opening excel file due to " + Utility.getStackTrace(e));
 			throw new RuntimeException("Error opening Excel file", e);
 		}
 	}
@@ -110,6 +112,7 @@ public class ExcelItemReader implements ItemReader {
 				rowIterator.hasNext();
 				rowIterator.next();
 			} catch (Exception e) {
+				logger.error("Error opening Excel file : " + e);
 				throw new RuntimeException("Error opening Excel file", e);
 			}
 		} else {
@@ -122,6 +125,8 @@ public class ExcelItemReader implements ItemReader {
 	@Override
 	public MyDataObject read() throws IOException {
 		resources = inputFiles();
+		logger.info("reading all input files total files are : " + resources);
+		logger.info("JOB 1: Started at time " + System.currentTimeMillis());
 		for (Resource resource : resources) {
 			try (InputStream inputStream = resource.getInputStream()) {
 				this.workbook = new XSSFWorkbook(inputStream);
@@ -133,21 +138,23 @@ public class ExcelItemReader implements ItemReader {
 					protected void doInTransactionWithoutResult(TransactionStatus status) {
 						try {
 							processFile(rowIterator, resource);
+							logger.info("JOB1: Completed at time : " + System.currentTimeMillis());
 							EmailUtility.sendEmail(
 									"JOB 1 : File processing job is success at time " + System.currentTimeMillis(),
 									Constants.SUCCESSS);
 						} catch (Exception e) {
-							e.printStackTrace();
+							logger.error("JOB 1 : File processing job is failed due to " + Utility.getStackTrace(e));
 							EmailUtility.sendEmail(
 									"JOB 1 : File processing job is failed at time " + System.currentTimeMillis(),
-									Constants.SUCCESSS);
+									Constants.FAILED);
 						}
 					}
 				});
 
 				closeWorkbook();
 			} catch (Exception e) {
-				e.printStackTrace();
+				logger.error("File processing failed for file " + resource.getFile().getAbsolutePath() + " due to :: "
+						+ Utility.getStackTrace(e));
 				EmailUtility.sendEmail("File processing failed for file " + resource.getFile().getAbsolutePath()
 						+ " :: at time " + System.currentTimeMillis() + " due to : " + e.getStackTrace(),
 						Constants.FAILED);
@@ -157,37 +164,57 @@ public class ExcelItemReader implements ItemReader {
 
 		try {
 			Integer spResponse = callStoredProcedure();
-
-			System.out.println("Stored procedure Resposne : " + spResponse);
+			logger.info("Stored procedure Resposne : " + spResponse + " :: Completed at time : "
+					+ System.currentTimeMillis());
 			boolean isJobResume = spResponse == 0 ? true : false;
 
 			if (isJobResume) {
-				System.out.println("Batch Job 2 started ");
-				fileWriteService.generateFile();
+				logger.info("JOB2: Started at time : " + System.currentTimeMillis());
+				transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+					@Override
+					protected void doInTransactionWithoutResult(TransactionStatus status) {
+						try {
+							fileWriteService.generateFile();
 
-				EmailUtility
-						.sendEmail("JOB 2 : Generate file and encrypt file and upload to sftp job is success at time "
-								+ System.currentTimeMillis(), Constants.SUCCESSS);
+							EmailUtility.sendEmail(
+									"JOB 2 : Generate file and encrypt file and upload to sftp job is success at time "
+											+ System.currentTimeMillis(),
+									Constants.SUCCESSS);
+							logger.info("JOB2: Completed at time : " + System.currentTimeMillis());
 
+						} catch (Exception e) {
+							logger.error(
+									"JOB 2 : Generate file and encrypt file and upload to sftp job is failed due to "
+											+ Utility.getStackTrace(e));
+							EmailUtility.sendEmail(
+									"JOB 2 : Generate file and encrypt file and upload to sftp job is failed at time "
+											+ System.currentTimeMillis(),
+									Constants.FAILED);
+						}
+					}
+				});
+
+				logger.info("Thread Sleep for 30 mint after JOB2 executed at time : " + System.currentTimeMillis());
 				try {
 					Thread.sleep(30 * 60 * 1000);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
 
-				System.out.println("Batch Job 3 started ");
+				logger.info("JOB3: Started at time : " + System.currentTimeMillis());
 				fileWriteService.downloadAndDecrptFile();
 
 				EmailUtility.sendEmail(
 						"JOB 3 : Download files from sftp and Decrypt files and process vpucher details job is success at time "
 								+ System.currentTimeMillis(),
 						Constants.SUCCESSS);
+				logger.info("JOB2: Completed at time : " + System.currentTimeMillis());
 			} else {
 				EmailUtility.sendEmail("Calling stored procedure response is not 0 response is : " + spResponse
 						+ " - at time " + System.currentTimeMillis(), Constants.FAILED);
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("Exception occurred from JOB 1,2,3 and failed due to " + Utility.getStackTrace(e));
 			EmailUtility.sendEmail("Calling stored procedure and second and third job error occured - at time "
 					+ System.currentTimeMillis(), Constants.FAILED);
 		}
@@ -205,7 +232,7 @@ public class ExcelItemReader implements ItemReader {
 			});
 			return resultList.get(0);
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("Exception occurred while calling stored procedure due to " + Utility.getStackTrace(e));
 			return 1;
 		}
 	}
@@ -314,7 +341,8 @@ public class ExcelItemReader implements ItemReader {
 			} catch (Exception e) {
 				EmailUtility.sendEmail("File processing failed for file - " + resource.getFile().getAbsolutePath(),
 						Constants.FAILED);
-				e.printStackTrace();
+				logger.error("Exception occurred while executing process file method and failed due to "
+						+ Utility.getStackTrace(e));
 			}
 		}
 
@@ -342,7 +370,7 @@ public class ExcelItemReader implements ItemReader {
 
 	private void moveFilesToArchiveFolder(String fin, Resource resource, String agencyName) {
 
-		System.out.println("Agency Name = " + agencyName);
+		logger.info("Agency name : "+agencyName+" - for the fein number : "+fin);
 		if (agencyName != null) {
 			try {
 				// Get the file path from the resource object
@@ -361,19 +389,18 @@ public class ExcelItemReader implements ItemReader {
 				// Move the file
 				Files.move(source, destination, StandardCopyOption.REPLACE_EXISTING);
 
-				System.out.println("File moved successfully from " + source + " to " + destination);
+				logger.info("File moved successfully from " + source + " to " + destination);
 			} catch (Exception e) {
-				System.err.println("Error moving the file: " + e.getMessage());
+				logger.error("Error moving the file due to :: " + Utility.getStackTrace(e));
 				try {
 					EmailUtility.sendEmail("File moving to archive folder got failed for file - "
 							+ resource.getFile().getAbsolutePath(), Constants.FAILED);
 				} catch (Exception ex) {
-					ex.printStackTrace();
+					logger.error("Error occured while moving files to archive folder inside catch due to : "+Utility.getStackTrace(ex));
 				}
-				e.printStackTrace();
 			}
 		} else {
-			System.out.println("Agency Name Not found");
+			logger.info("Agency Name Not found for fein number :: "+fin);
 		}
 	}
 
@@ -434,6 +461,7 @@ public class ExcelItemReader implements ItemReader {
 				workbook.close();
 			}
 		} catch (Exception e) {
+			logger.error("Error occurred during clsing the workbook due to :: "+Utility.getStackTrace(e));
 			throw new RuntimeException("Error closing Excel workbook", e);
 		}
 	}

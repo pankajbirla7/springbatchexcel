@@ -1,13 +1,12 @@
 package com.example.utility;
 
-import com.example.service.StdClaimService;
-import com.jcraft.jsch.*;
-
-import org.bouncycastle.openpgp.PGPException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,19 +23,30 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import org.apache.commons.io.FilenameUtils;
+import org.bouncycastle.openpgp.PGPException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+import com.example.service.StdClaimService;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
 import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
-
-import org.apache.commons.io.FilenameUtils;
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.Session;
+import com.jcraft.jsch.SftpException;
 
 @Component
 public class Utility {
+	
+	static final Logger logger = LoggerFactory.getLogger(Utility.class);
 
 	@Autowired
 	StdClaimService stdClaimService;
@@ -55,6 +65,7 @@ public class Utility {
 			uploadFile(outputFilePath, host, port, username, password, passphrase, privateKeyPath, remoteDirectory);
 		} catch (Exception e) {
 			e.printStackTrace();
+			logger.error("Error occured during encryptAndUpload method due to : "+getStackTrace(e));
 		}
 	}
 
@@ -76,10 +87,6 @@ public class Utility {
 			ChannelSftp channelSftp = (ChannelSftp) session.openChannel("sftp");
 			channelSftp.connect();
 
-			// Uploading the encrypted file
-// FileInputStream encryptedFileInputStream = new FileInputStream(file);
-// channelSftp.put(encryptedFileInputStream, remoteDirectory + file.getName());
-
 			// Change to the target directory
 			channelSftp.cd(remoteDirectory);
 
@@ -88,20 +95,14 @@ public class Utility {
 				channelSftp.put(fis, file.getName());
 			}
 
-			System.out.println("File uploaded successfully to " + localFilePath);
-
 			// Disconnecting the channel and session
 			channelSftp.disconnect();
 			session.disconnect();
 
-			// Closing the file input stream
-// encryptedFileInputStream.close();
-
-			System.out.println("File uploaded successfully.");
-		} catch (JSchException | SftpException e) {
-			e.printStackTrace();
+			logger.info("File uploaded successfully to path :: "+localFilePath);
 		} catch (Exception e) {
 			e.printStackTrace();
+			logger.error("Error occured during upload file to sftp due to : "+getStackTrace(e));
 		}
 	}
 
@@ -112,6 +113,7 @@ public class Utility {
 					privateKeyPath, remoteDirectory);
 		} catch (Exception e) {
 			e.printStackTrace();
+			logger.error("Error occured during movingFileToSFTP method due to : "+getStackTrace(e));
 		}
 	}
 
@@ -131,6 +133,7 @@ public class Utility {
 			archiveFiles(downloadFilePath, archiveDownloadDirectory);
 		} catch (Exception e) {
 			e.printStackTrace();
+			logger.error("Error occured during downloadFilesFromSftpAndDecrypt method due to : "+getStackTrace(e));
 			throw e;
 		}
 	}
@@ -150,14 +153,13 @@ public class Utility {
 
 						// Move the file to the target directory
 						Files.move(file, targetPath, StandardCopyOption.REPLACE_EXISTING);
-						System.out.println("Moved: " + file.getFileName());
 					}
-				} catch (IOException e) {
-					System.err.println("Failed to move file: " + file.getFileName() + " due to: " + e.getMessage());
+				} catch (Exception e) {
+					logger.error("Error occurred in method archiveFiles , Failed to move file: " + file.getFileName() + " due to :: " + getStackTrace(e));
 				}
 			});
 		} catch (Exception e) {
-			System.err.println("Failed to list files in the source directory: " + e.getMessage());
+			logger.error("Error occurred in method archiveFiles , Failed to list files in the source directory: due to :: " + getStackTrace(e));
 			throw e;
 		}
 	}
@@ -198,7 +200,7 @@ public class Utility {
 
 							// Move the file
 							channelSftp.rename(sourceFilePath, destinationFilePath);
-							System.out.println("Moved file: " + sourceFilePath + " to " + destinationFilePath);
+							logger.info("Archive SFTP Files - Moved file: " + sourceFilePath + " to " + destinationFilePath);
 						}
 					} else {
 						String sourceFilePath = remoteDirectory + "/" + fileName;
@@ -206,13 +208,14 @@ public class Utility {
 
 						// Move the file
 						channelSftp.rename(sourceFilePath, destinationFilePath);
-						System.out.println("Moved file: " + sourceFilePath + " to " + destinationFilePath);
+						logger.info("Archive SFTP Files - Moved file: " + sourceFilePath + " to " + destinationFilePath);
 					}
 				}
 			}
 
 		} catch (Exception e) {
 			e.printStackTrace();
+			logger.error("Error occured during moving sfto files to archive due to :: "+getStackTrace(e));
 			throw e;
 		} finally {
 			if (channelSftp != null) {
@@ -237,6 +240,7 @@ public class Utility {
 
 		} catch (Exception e) {
 			e.printStackTrace();
+			logger.error("Error occurred during decryptFile due to :: "+getStackTrace(e));
 			throw e;
 		}
 	}
@@ -265,13 +269,13 @@ public class Utility {
 							String localFilePath = downloadFilePath + File.separator + remoteFileName;
 							channelSftp.get(remoteFileName, localFilePath);
 
-							System.out.println("File downloaded: " + remoteFileName);
+							logger.info("File downloaded : " + remoteFileName);
 						}
 					} else {
 						String localFilePath = downloadFilePath + File.separator + remoteFileName;
 						channelSftp.get(remoteFileName, localFilePath);
 
-						System.out.println("File downloaded: " + remoteFileName);
+						logger.info("File downloaded: " + remoteFileName);
 					}
 				}
 			}
@@ -280,9 +284,10 @@ public class Utility {
 			session.disconnect();
 		} catch (Exception e) {
 			e.printStackTrace();
+			logger.error("Error occured during download files :: "+getStackTrace(e));
 			throw e;
 		}
-		System.out.println("All files downloaded successfully.");
+		logger.info("All files downloaded successfully.");
 	}
 
 	public void parseFilesAndSaveVoucherDetails(List<String> outputFilePaths) {
@@ -321,10 +326,10 @@ public class Utility {
 				scanner.close();
 
 			} catch (FileNotFoundException e) {
-				System.out.println("File not found: " + outputFilePath);
+				logger.error("File not found " + outputFilePath);
 				e.printStackTrace();
 			}
-			System.out.println("Voucher Details Map : " + voucherDetailsAndStatusMap);
+			logger.info("Voucher Details Map : " + voucherDetailsAndStatusMap);
 
 			stdClaimService.updateVoucherDetailsAndStatus(voucherDetailsAndStatusMap);
 		}
@@ -384,6 +389,7 @@ public class Utility {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
+			logger.error("Error occured during migaretCsvToPdfFiles due to :: "+getStackTrace(e));
 		}
 	}
 
@@ -397,5 +403,12 @@ public class Utility {
 			}
 		}
 		return filePaths;
+	}
+
+	public static String getStackTrace(Exception ex) {
+		Writer buffer = new StringWriter();
+		PrintWriter pw = new PrintWriter(buffer);
+		ex.printStackTrace(pw);
+		return buffer.toString();
 	}
 }
