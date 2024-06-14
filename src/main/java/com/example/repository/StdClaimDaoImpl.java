@@ -5,32 +5,42 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import com.example.dto.StdClaim;
+import com.example.utility.Utility;
 
 @Repository
 public class StdClaimDaoImpl implements StdClaimDao {
 
+	static final Logger logger = LoggerFactory.getLogger(StdClaimDaoImpl.class);
+	
 	@Autowired
 	public JdbcTemplate jdbcTemplate;
 
 	@Override
 	public List<StdClaim> getStdClaimDetails(int processed) {
 		List<StdClaim> stdClaimList = new ArrayList<>();
-
-		String sql = "SELECT distinct File_id FROM std_claims where DateToSFS is null and status_cd = ?";
-
-		List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, new Object[] { processed });
-
-		for (Map<String, Object> row : rows) {
-			StdClaim stdClaim = new StdClaim();
-			int fileId = (int) row.get("File_id");
-			stdClaim.setFileid(fileId);
-
-			stdClaimList.add(stdClaim);
+		try {
+			String sql = "SELECT distinct File_id FROM std_claims where DateToSFS is null and status_cd = ?";
+	
+			List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, new Object[] { processed });
+			logger.info("Query executed to find stdclaim details based on dateToSfs is null and Status_CD as - "+processed+ 
+					" :: Query - "+sql+ " :: result returned :: "+rows );
+			for (Map<String, Object> row : rows) {
+				StdClaim stdClaim = new StdClaim();
+				int fileId = (int) row.get("File_id");
+				stdClaim.setFileid(fileId);
+	
+				stdClaimList.add(stdClaim);
+			}
+		}catch(Exception e) {
+			e.printStackTrace();
+			logger.error("Exception occured while getting stdclaim details where dateToSfs is null and status_cd is :: "+processed+ " :: due to :: "+Utility.getStackTrace(e));
 		}
 		return stdClaimList;
 	}
