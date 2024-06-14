@@ -26,7 +26,7 @@ import com.example.utility.Utility;
 
 @Service
 public class FileWriteServiceImpl implements FileWriteService {
-	
+
 	static final Logger logger = LoggerFactory.getLogger(FileWriteServiceImpl.class);
 
 	@Autowired
@@ -84,63 +84,67 @@ public class FileWriteServiceImpl implements FileWriteService {
 
 	@Value("${sftp.remotedirectory.archive}")
 	private String sftpRemoteArchiveDirectory;
-	
 
 	@Value("${download.sftp.processed.file.path}")
 	private String downloadSftpProcessedFilePath;
-	
+
 	@Value("${decrypted.processed.file.path}")
 	private String decryptedProcessedFileDirectory;
 
-	
 	@Value("${sftp.processed.remotedirectory.download}")
 	private String sftpProcessedRemoteDownloadDirectory;
 
 	@Value("${sftp.processed.remotedirectory.archive}")
 	private String sftpProcessedRemoteArchiveDirectory;
-	
+
 	@Value("${archive.download.sftp.file.path}")
 	private String archiveDownloadDirectory;
 
 	@Value("${archive.download.sftp.processed.file.path}")
 	private String archiveProcessedDownloadDirectory;
-	
+
 	@Value("${csv.file.path}")
 	private String csvFilePath;
 
 	@Value("${pdf.file.path}")
 	private String pdfFilePath;
-	
+
 //	#################################################################################
-	
 
 	@Override
 	public void generateFile() {
 		try {
+			logger.info("Fetching total std claims for status new and datetosfs status is null status value ::  "
+					+ Constants.NEW);
 			List<StdClaim> stdClaims = stdClaimDao.getStdClaimDetails(Constants.NEW);
 			logger.info("total stdClaimList " + stdClaims.size());
-	
-			for (StdClaim stdClaim : stdClaims) {
-				FileDetails fileDetails = fileDao.getFileDetailsByFileID(stdClaim.getFileid());
-				int claimCount = stdClaimDao.getClaimCountByDateEntered(fileDetails.getSubmitDate(), Constants.NEW);
-				logger.info("Total Cliam count for stadClaim date value greater than : " + " for file Id : "
-						+ stdClaim.getFileid());
-	
-				List<StdClaim> stdClaims2 = stdClaimDao.getClaimIds(fileDetails.getSubmitDate(), Constants.NEW);
-				String filePath = writeFirstClaimCountRowInFile(claimCount, stdClaim, stdClaims2, fileDetails);
-				
-				logger.info("While generating and encrypting file process teh filepath is : "+filePath);
-				if(filePath!=null) {
-					encryptFileAndUploadToSftp(filePath);
-					stdClaimDao.updateStandardDetailSfsDate(stdClaims2);
+
+			if (stdClaims != null && stdClaims.size() > 0) {
+				for (StdClaim stdClaim : stdClaims) {
+					FileDetails fileDetails = fileDao.getFileDetailsByFileID(stdClaim.getFileid());
+					int claimCount = stdClaimDao.getClaimCountByDateEntered(fileDetails.getSubmitDate(), Constants.NEW);
+					logger.info("Total Cliam count for stadClaim date value greater than : " + " for file Id : "
+							+ stdClaim.getFileid());
+
+					List<StdClaim> stdClaims2 = stdClaimDao.getClaimIds(fileDetails.getSubmitDate(), Constants.NEW);
+					String filePath = writeFirstClaimCountRowInFile(claimCount, stdClaim, stdClaims2, fileDetails);
+
+					logger.info("While generating and encrypting file process teh filepath is : " + filePath);
+					if (filePath != null) {
+						encryptFileAndUploadToSftp(filePath);
+						stdClaimDao.updateStandardDetailSfsDate(stdClaims2);
+					}
+					break;
 				}
-				break;
+			} else {
+				logger.info(
+						"total stdClaimList for claim status new and datetosfs is null records not found " + stdClaims);
 			}
-		}catch (Exception e) {
+		} catch (Exception e) {
 			e.printStackTrace();
-			logger.error("generateFile(): Error occured while gennerating file :: "+Utility.getStackTrace(e));
-			EmailUtility.sendEmail("Error while generating and encrypting file process at time " + System.currentTimeMillis()+ " due to : "+e.getStackTrace(),
-					Constants.FAILED);
+			logger.error("generateFile(): Error occured while gennerating file :: " + Utility.getStackTrace(e));
+			EmailUtility.sendEmail("Error while generating and encrypting file process at time "
+					+ System.currentTimeMillis() + " due to : " + e.getStackTrace(), Constants.FAILED);
 		}
 	}
 ///////////////////////////////Encrypt and Upload File/////////////////////////////////////
@@ -176,7 +180,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 		// Write data to the file
 		try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
 			writer.write(firstRow);
-			logger.info("First Row Data written to file successfully. "+firstRow);
+			logger.info("First Row Data written to file successfully. " + firstRow);
 			int count = 0;
 
 			int dohTransCtrlNo = 0;
@@ -379,7 +383,8 @@ public class FileWriteServiceImpl implements FileWriteService {
 		return vohDetails;
 	}
 
-	///////////////////////////////Download ANd Decrypt File/////////////////////////////////
+	/////////////////////////////// Download ANd Decrypt
+	/////////////////////////////// File/////////////////////////////////
 	@Override
 	public void downloadAndDecrptFile() {
 
@@ -389,30 +394,32 @@ public class FileWriteServiceImpl implements FileWriteService {
 					sftpRemoteArchiveDirectory, true, archiveDownloadDirectory, null);
 		} catch (Exception e) {
 			e.printStackTrace();
-			logger.error("Error occured during downlaod and decrypt file due to :: "+Utility.getStackTrace(e));
-			EmailUtility.sendEmail("downloadAndDecrptFile job is failed at time " + System.currentTimeMillis()+ " due to : "+e.getStackTrace(),
-					Constants.FAILED);
+			logger.error("Error occured during downlaod and decrypt file due to :: " + Utility.getStackTrace(e));
+			EmailUtility.sendEmail("downloadAndDecrptFile job is failed at time " + System.currentTimeMillis()
+					+ " due to : " + e.getStackTrace(), Constants.FAILED);
 		}
 	}
-	
+
 	@Override
 	public void downloadAndDecryptProcessedFiles() {
 
 		try {
-			utility.downloadFilesFromSftpAndDecrypt(downloadSftpProcessedFilePath, decryptedProcessedFileDirectory, passphrase, sftpHost,
-					port, sftpUserName, sftpPassword, privateKeyPath, sftpProcessedRemoteDownloadDirectory,
-					sftpProcessedRemoteArchiveDirectory, false, archiveProcessedDownloadDirectory, Constants.FILE_PATTERN);
+			utility.downloadFilesFromSftpAndDecrypt(downloadSftpProcessedFilePath, decryptedProcessedFileDirectory,
+					passphrase, sftpHost, port, sftpUserName, sftpPassword, privateKeyPath,
+					sftpProcessedRemoteDownloadDirectory, sftpProcessedRemoteArchiveDirectory, false,
+					archiveProcessedDownloadDirectory, Constants.FILE_PATTERN);
 		} catch (Exception e) {
 			e.printStackTrace();
-			logger.error("Error occured during downlaod and decrypt processed file due to :: "+Utility.getStackTrace(e));
-			EmailUtility.sendEmail("downloadAndDecryptProcessedFiles job is failed at time " + System.currentTimeMillis()+ " due to : "+e.getStackTrace(),
-					Constants.FAILED);
+			logger.error(
+					"Error occured during downlaod and decrypt processed file due to :: " + Utility.getStackTrace(e));
+			EmailUtility.sendEmail("downloadAndDecryptProcessedFiles job is failed at time "
+					+ System.currentTimeMillis() + " due to : " + e.getStackTrace(), Constants.FAILED);
 		}
 	}
 
 	@Override
 	public void migrateCsvToPdfFiles() {
-		
+
 		utility.migaretCsvToPdfFiles(csvFilePath, pdfFilePath);
 	}
 
