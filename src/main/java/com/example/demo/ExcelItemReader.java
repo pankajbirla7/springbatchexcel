@@ -163,10 +163,29 @@ public class ExcelItemReader implements ItemReader {
 		}
 
 		try {
-			Integer spResponse = callStoredProcedure();
-			logger.info("Stored procedure Resposne : " + spResponse + " :: Completed at time : "
-					+ System.currentTimeMillis());
-			boolean isJobResume = spResponse == 0 ? true : false;
+			final Integer[] spResponses = new Integer[1];
+			Integer spResponse = 1;
+			
+			transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+				@Override
+				protected void doInTransactionWithoutResult(TransactionStatus status) {
+					try {
+						spResponses[0] = callStoredProcedure();
+						logger.info("Stored procedure Resposne : " + spResponse + " :: Completed at time : "
+								+ System.currentTimeMillis());
+					} catch (Exception e) {
+						logger.error(
+								"JOB 2 : Generate file and encrypt file and upload to sftp job is failed due to "
+										+ Utility.getStackTrace(e));
+						EmailUtility.sendEmail(
+								"JOB 2 : Generate file and encrypt file and upload to sftp job is failed at time "
+										+ System.currentTimeMillis(),
+								Constants.FAILED);
+					}
+				}
+			});
+			
+			boolean isJobResume = spResponses[0] == 0 ? true : false;
 
 			if (isJobResume) {
 				logger.info("JOB2: Started at time : " + System.currentTimeMillis());
@@ -254,14 +273,20 @@ public class ExcelItemReader implements ItemReader {
 				Cell cell = cellIterator.next();
 				if (colCount >= 3) {
 					break;
-				}
+				} 
 				colCount++;
 				if (cell.getCellType() == CellType.NUMERIC
 						&& org.apache.poi.ss.usermodel.DateUtil.isCellDateFormatted(cell)) {
 
 				} else {
 					if (cell.getCellType() == CellType.NUMERIC || cell.getCellType() == CellType.STRING) {
-						cell.setCellType(CellType.STRING);
+						if(cell.getCellType() == CellType.NUMERIC) {
+							double numericValue = cell.getNumericCellValue();
+	                        // Format the numeric value as a string with leading zeros
+	                        String formattedValue = String.format("%015.0f", numericValue);
+	                        cell.setCellType(CellType.STRING);
+	                        cell.setCellValue(formattedValue);
+						}
 					}
 				}
 
