@@ -107,13 +107,13 @@ public class Utility {
 	}
 
 	public void moveFileToSFTP(String inputFilePath, String outputFilePath, String publicKeyPath, String passphrase,
-			String host, int port, String username, String password, String privateKeyPath, String remoteDirectory) {
+			String host, int port, String username, String password, String privateKeyPath, String remoteDirectory) throws Exception {
 		try {
 			encryptAndUpload(inputFilePath, outputFilePath, publicKeyPath, passphrase, host, port, username, password,
 					privateKeyPath, remoteDirectory);
 		} catch (Exception e) {
-			e.printStackTrace();
 			logger.error("Error occured during movingFileToSFTP method due to : "+getStackTrace(e));
+			throw e;
 		}
 	}
 
@@ -132,7 +132,6 @@ public class Utility {
 					remoteDirectory, sftpRemoteArchiveDirectory, filePattern);
 			archiveFiles(downloadFilePath, archiveDownloadDirectory);
 		} catch (Exception e) {
-			e.printStackTrace();
 			logger.error("Error occured during downloadFilesFromSftpAndDecrypt method due to : "+getStackTrace(e));
 			throw e;
 		}
@@ -158,6 +157,7 @@ public class Utility {
 					logger.error("Error occurred in method archiveFiles , Failed to move file: " + file.getFileName() + " due to :: " + getStackTrace(e));
 				}
 			});
+			logger.error("All files archive successfully in method archiveFiles.");
 		} catch (Exception e) {
 			logger.error("Error occurred in method archiveFiles , Failed to list files in the source directory: due to :: " + getStackTrace(e));
 			throw e;
@@ -215,7 +215,7 @@ public class Utility {
 
 		} catch (Exception e) {
 			e.printStackTrace();
-			logger.error("Error occured during moving sfto files to archive due to :: "+getStackTrace(e));
+			logger.error("Error occured in archiveSftpFiles method, during moving sfto files to archive due to :: "+getStackTrace(e));
 			throw e;
 		} finally {
 			if (channelSftp != null) {
@@ -228,7 +228,7 @@ public class Utility {
 	}
 
 	private void decryptFile(String passphrase, String privateKeyPath, String downloadFilePath, String decryptFilePath,
-			boolean isProcessVoucherDetails) {
+			boolean isProcessVoucherDetails) throws Exception {
 
 		// Decrypting files
 		try {
@@ -240,7 +240,7 @@ public class Utility {
 
 		} catch (Exception e) {
 			e.printStackTrace();
-			logger.error("Error occurred during decryptFile due to :: "+getStackTrace(e));
+			logger.error("Error occurred in decryptFile method, during decryptFile due to :: "+getStackTrace(e));
 			throw e;
 		}
 	}
@@ -284,13 +284,13 @@ public class Utility {
 			session.disconnect();
 		} catch (Exception e) {
 			e.printStackTrace();
-			logger.error("Error occured during download files :: "+getStackTrace(e));
+			logger.error("Error occured in downloadFiles method , during download files :: "+getStackTrace(e));
 			throw e;
 		}
 		logger.info("All files downloaded successfully.");
 	}
 
-	public void parseFilesAndSaveVoucherDetails(List<String> outputFilePaths) {
+	public void parseFilesAndSaveVoucherDetails(List<String> outputFilePaths) throws Exception {
 		for (String outputFilePath : outputFilePaths) {
 			Map<String, String> voucherDetailsAndStatusMap = new HashMap<>();
 			try {
@@ -324,14 +324,16 @@ public class Utility {
 				}
 
 				scanner.close();
+				
+				logger.info("Voucher Details Map : " + voucherDetailsAndStatusMap);
 
-			} catch (FileNotFoundException e) {
-				logger.error("File not found " + outputFilePath);
-				e.printStackTrace();
+				stdClaimService.updateVoucherDetailsAndStatus(voucherDetailsAndStatusMap);
+
+			} catch (Exception e) {
+				logger.error("Error occured during parseFilesAndSaveVoucherDetails for file " + outputFilePath + " :: Error is :: "+getStackTrace(e));
+				throw e;
 			}
-			logger.info("Voucher Details Map : " + voucherDetailsAndStatusMap);
-
-			stdClaimService.updateVoucherDetailsAndStatus(voucherDetailsAndStatusMap);
+			
 		}
 	}
 
