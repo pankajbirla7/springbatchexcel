@@ -129,11 +129,16 @@ public class FileWriteServiceImpl implements FileWriteService {
 					List<StdClaim> stdClaims2 = stdClaimDao.getClaimIds(fileDetails.getSubmitDate(), Constants.NEW);
 					String filePath = writeFirstClaimCountRowInFile(claimCount, stdClaim, stdClaims2, fileDetails);
 
-					logger.info("While generating and encrypting file process teh filepath is : " + filePath);
+					logger.info("While generating and encrypting file process the filepath is : " + filePath);
 					if (filePath != null) {
 						encryptFileAndUploadToSftp(filePath);
 						stdClaimDao.updateStandardDetailSfsDate(stdClaims2);
+						EmailUtility.sendEmail(
+								"JOB 2 : Generate file and encrypt file and upload to sftp job is success at time "
+										+ System.currentTimeMillis(),
+								Constants.SUCCESSS);
 					}
+					
 					break;
 				}
 			} else {
@@ -141,15 +146,18 @@ public class FileWriteServiceImpl implements FileWriteService {
 						"total stdClaimList for claim status new and datetosfs is null records not found " + stdClaims);
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
-			logger.error("generateFile(): Error occured while gennerating file :: " + Utility.getStackTrace(e));
-			EmailUtility.sendEmail("Error while generating and encrypting file process at time "
-					+ System.currentTimeMillis() + " due to : " + e.getStackTrace(), Constants.FAILED);
+			logger.error(
+					"JOB 2 : Generate file and encrypt file and upload to sftp job is failed due to "
+							+ Utility.getStackTrace(e));
+			EmailUtility.sendEmail(
+					"JOB 2 : Generate file and encrypt file and upload to sftp job is failed at time "
+							+ System.currentTimeMillis(),
+					Constants.FAILED);
 		}
 	}
 ///////////////////////////////Encrypt and Upload File/////////////////////////////////////
 
-	private void encryptFileAndUploadToSftp(String filePath) {
+	private void encryptFileAndUploadToSftp(String filePath) throws Exception {
 		String inputFilePath = filePath;
 		LocalDate today = LocalDate.now();
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMddyyyy");
@@ -163,7 +171,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 	}
 
 	private String writeFirstClaimCountRowInFile(int claimCount, StdClaim stdClaim1, List<StdClaim> stdClaims2,
-			FileDetails fileDetails) {
+			FileDetails fileDetails) throws Exception {
 		String ssid = "12969";
 		String ctlNum = "SFNET";
 		String pgmCode = "28638";
@@ -339,7 +347,8 @@ public class FileWriteServiceImpl implements FileWriteService {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			return null;
+			logger.error("Error occured while generating file and content in method writeFirstClaimCountRowInFile at time error is :  "+Utility.getStackTrace(e));
+			throw e;
 		}
 		return filePath;
 	}
@@ -392,11 +401,20 @@ public class FileWriteServiceImpl implements FileWriteService {
 			utility.downloadFilesFromSftpAndDecrypt(downloadSftpFilePath, decryptedFileDirectory, passphrase, sftpHost,
 					port, sftpUserName, sftpPassword, privateKeyPath, sftpRemoteDownloadDirectory,
 					sftpRemoteArchiveDirectory, true, archiveDownloadDirectory, null);
+			
+			EmailUtility.sendEmail(
+					"JOB 3 : Download files from sftp and Decrypt files and process voucher details job is success at time "
+							+ System.currentTimeMillis(),
+					Constants.SUCCESSS);
+			
 		} catch (Exception e) {
-			e.printStackTrace();
-			logger.error("Error occured during downlaod and decrypt file due to :: " + Utility.getStackTrace(e));
-			EmailUtility.sendEmail("downloadAndDecrptFile job is failed at time " + System.currentTimeMillis()
-					+ " due to : " + e.getStackTrace(), Constants.FAILED);
+			logger.error(
+					"JOB 3 : downloadAndDecrptFile method, Download files from sftp and Decrypt files and process vpucher details job is failed due to "
+							+ Utility.getStackTrace(e));
+			EmailUtility.sendEmail(
+					"JOB 3 : Download files from sftp and Decrypt files and process vpucher details job is failed at time "
+							+ System.currentTimeMillis(),
+					Constants.FAILED);
 		}
 	}
 
@@ -408,12 +426,20 @@ public class FileWriteServiceImpl implements FileWriteService {
 					passphrase, sftpHost, port, sftpUserName, sftpPassword, privateKeyPath,
 					sftpProcessedRemoteDownloadDirectory, sftpProcessedRemoteArchiveDirectory, false,
 					archiveProcessedDownloadDirectory, Constants.FILE_PATTERN);
+			
+			EmailUtility.sendEmail(
+					"JOB 3 : Download processed files from sftp and Decrypt processed files and process voucher details job is success at time "
+							+ System.currentTimeMillis(),
+					Constants.SUCCESSS);
+			
 		} catch (Exception e) {
-			e.printStackTrace();
 			logger.error(
-					"Error occured during downlaod and decrypt processed file due to :: " + Utility.getStackTrace(e));
-			EmailUtility.sendEmail("downloadAndDecryptProcessedFiles job is failed at time "
-					+ System.currentTimeMillis() + " due to : " + e.getStackTrace(), Constants.FAILED);
+					"JOB 3 : downloadAndDecryptProcessedFiles method, Download files from sftp and Decrypt files and process vpucher details job is failed due to "
+							+ Utility.getStackTrace(e));
+			EmailUtility.sendEmail(
+					"JOB 3 : Download processed files from sftp and Decrypt processed files and process vpucher details job is failed at time "
+							+ System.currentTimeMillis(),
+					Constants.FAILED);
 		}
 	}
 

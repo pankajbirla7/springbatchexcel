@@ -138,10 +138,6 @@ public class ExcelItemReader implements ItemReader {
 					protected void doInTransactionWithoutResult(TransactionStatus status) {
 						try {
 							processFile(rowIterator, resource);
-							logger.info("JOB1: Completed at time : " + System.currentTimeMillis());
-							EmailUtility.sendEmail(
-									"JOB 1 : File processing job is success at time " + System.currentTimeMillis(),
-									Constants.SUCCESSS);
 						} catch (Exception e) {
 							logger.error("JOB 1 : File processing job is failed due to " + Utility.getStackTrace(e));
 							EmailUtility.sendEmail(
@@ -162,10 +158,12 @@ public class ExcelItemReader implements ItemReader {
 			}
 		}
 
+		logger.info("JOB1: Completed at time : " + System.currentTimeMillis());
+
 		try {
 			final Integer[] spResponses = new Integer[1];
 			Integer spResponse = 1;
-			
+
 			transactionTemplate.execute(new TransactionCallbackWithoutResult() {
 				@Override
 				protected void doInTransactionWithoutResult(TransactionStatus status) {
@@ -174,9 +172,8 @@ public class ExcelItemReader implements ItemReader {
 						logger.info("Stored procedure Resposne : " + spResponse + " :: Completed at time : "
 								+ System.currentTimeMillis());
 					} catch (Exception e) {
-						logger.error(
-								"JOB 2 : Generate file and encrypt file and upload to sftp job is failed due to "
-										+ Utility.getStackTrace(e));
+						logger.error("JOB 2 : Generate file and encrypt file and upload to sftp job is failed due to "
+								+ Utility.getStackTrace(e));
 						EmailUtility.sendEmail(
 								"JOB 2 : Generate file and encrypt file and upload to sftp job is failed at time "
 										+ System.currentTimeMillis(),
@@ -184,7 +181,7 @@ public class ExcelItemReader implements ItemReader {
 					}
 				}
 			});
-			
+
 			boolean isJobResume = spResponses[0] == 0 ? true : false;
 
 			if (isJobResume) {
@@ -195,13 +192,7 @@ public class ExcelItemReader implements ItemReader {
 						try {
 							logger.info("JOB2: Execution Started at time : " + System.currentTimeMillis());
 							fileWriteService.generateFile();
-
-							EmailUtility.sendEmail(
-									"JOB 2 : Generate file and encrypt file and upload to sftp job is success at time "
-											+ System.currentTimeMillis(),
-									Constants.SUCCESSS);
 							logger.info("JOB2: Completed at time : " + System.currentTimeMillis());
-
 						} catch (Exception e) {
 							logger.error(
 									"JOB 2 : Generate file and encrypt file and upload to sftp job is failed due to "
@@ -218,17 +209,30 @@ public class ExcelItemReader implements ItemReader {
 				try {
 					Thread.sleep(30 * 60 * 1000);
 				} catch (InterruptedException e) {
-					e.printStackTrace();
+					logger.error("JOB 2 an JOB 3 Hault Time : Error occured while Thread is in sleep state :: "
+							+ Utility.getStackTrace(e));
 				}
 
 				logger.info("JOB3: Started at time : " + System.currentTimeMillis());
-				fileWriteService.downloadAndDecrptFile();
+				transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+					@Override
+					protected void doInTransactionWithoutResult(TransactionStatus status) {
+						try {
+							logger.info("JOB 3: Execution Started at time : " + System.currentTimeMillis());
+							fileWriteService.downloadAndDecrptFile();
+							logger.info("JOB 3: Completed at time : " + System.currentTimeMillis());
+						} catch (Exception e) {
+							logger.error(
+									"JOB 3 : Download files from sftp and Decrypt files and process vpucher details job is failed due to "
+											+ Utility.getStackTrace(e));
+							EmailUtility.sendEmail(
+									"JOB 3 : Download files from sftp and Decrypt files and process vpucher details job is failed at time "
+											+ System.currentTimeMillis(),
+									Constants.FAILED);
+						}
+					}
+				});
 
-				EmailUtility.sendEmail(
-						"JOB 3 : Download files from sftp and Decrypt files and process vpucher details job is success at time "
-								+ System.currentTimeMillis(),
-						Constants.SUCCESSS);
-				logger.info("JOB2: Completed at time : " + System.currentTimeMillis());
 			} else {
 				EmailUtility.sendEmail("Calling stored procedure response is not 0 response is : " + spResponse
 						+ " - at time " + System.currentTimeMillis(), Constants.FAILED);
@@ -259,6 +263,7 @@ public class ExcelItemReader implements ItemReader {
 
 	private void processFile(Iterator<Row> rowIterator, Resource resource) throws Exception {
 		List<MyDataObject> items = new ArrayList<>();
+		DataFormatter dataFormatter = new DataFormatter();
 		int fileId = 0;
 		while (rowIterator != null && rowIterator.hasNext()) {
 			MyDataObject dataObject = new MyDataObject();
@@ -273,19 +278,18 @@ public class ExcelItemReader implements ItemReader {
 				Cell cell = cellIterator.next();
 				if (colCount >= 3) {
 					break;
-				} 
+				}
 				colCount++;
 				if (cell.getCellType() == CellType.NUMERIC
 						&& org.apache.poi.ss.usermodel.DateUtil.isCellDateFormatted(cell)) {
 
 				} else {
 					if (cell.getCellType() == CellType.NUMERIC || cell.getCellType() == CellType.STRING) {
-						if(cell.getCellType() == CellType.NUMERIC) {
-							double numericValue = cell.getNumericCellValue();
-	                        // Format the numeric value as a string with leading zeros
-	                        String formattedValue = String.format("%015.0f", numericValue);
-	                        cell.setCellType(CellType.STRING);
-	                        cell.setCellValue(formattedValue);
+						if (cell.getCellType() == CellType.NUMERIC) {
+							String formattedValue = dataFormatter.formatCellValue(cell);
+
+							cell.setCellType(CellType.STRING);
+							cell.setCellValue(formattedValue);
 						}
 					}
 				}
@@ -358,18 +362,24 @@ public class ExcelItemReader implements ItemReader {
 
 					moveFilesToArchiveFolder(items.get(0).getFein(), resource, agencyName);
 
-					EmailUtility.sendEmail("File processing success for file - " + resource.getFile().getAbsolutePath(),
-							Constants.SUCCESSS);
+					EmailUtility.sendEmail("JOB 1 : File processing and records success for file - "
+							+ resource.getFile().getAbsolutePath(), Constants.SUCCESSS);
 				} else {
 					EmailUtility.sendEmail("Agency Name not found for the fein :" + items.get(0).getFein()
 							+ " and failed for file - " + resource.getFile().getAbsolutePath(), Constants.FAILED);
 				}
 			} catch (Exception e) {
-				EmailUtility.sendEmail("File processing failed for file - " + resource.getFile().getAbsolutePath(),
+				EmailUtility.sendEmail(
+						"JOB 1 : File processing failed for file - " + resource.getFile().getAbsolutePath(),
 						Constants.FAILED);
 				logger.error("Exception occurred while executing process file method and failed due to "
 						+ Utility.getStackTrace(e));
 			}
+		} else {
+			EmailUtility.sendEmail(
+					"JOB 1 : File processing job is not having records for the file :: "
+							+ resource.getFile().getAbsolutePath() + " at time " + System.currentTimeMillis(),
+					Constants.SUCCESSS);
 		}
 
 	}
@@ -396,7 +406,7 @@ public class ExcelItemReader implements ItemReader {
 
 	private void moveFilesToArchiveFolder(String fin, Resource resource, String agencyName) {
 
-		logger.info("Agency name : "+agencyName+" - for the fein number : "+fin);
+		logger.info("Agency name : " + agencyName + " - for the fein number : " + fin);
 		if (agencyName != null) {
 			try {
 				// Get the file path from the resource object
@@ -422,11 +432,12 @@ public class ExcelItemReader implements ItemReader {
 					EmailUtility.sendEmail("File moving to archive folder got failed for file - "
 							+ resource.getFile().getAbsolutePath(), Constants.FAILED);
 				} catch (Exception ex) {
-					logger.error("Error occured while moving files to archive folder inside catch due to : "+Utility.getStackTrace(ex));
+					logger.error("Error occured while moving files to archive folder inside catch due to : "
+							+ Utility.getStackTrace(ex));
 				}
 			}
 		} else {
-			logger.info("Agency Name Not found for fein number :: "+fin);
+			logger.info("Agency Name Not found for fein number :: " + fin);
 		}
 	}
 
@@ -487,7 +498,7 @@ public class ExcelItemReader implements ItemReader {
 				workbook.close();
 			}
 		} catch (Exception e) {
-			logger.error("Error occurred during clsing the workbook due to :: "+Utility.getStackTrace(e));
+			logger.error("Error occurred during clsing the workbook due to :: " + Utility.getStackTrace(e));
 			throw new RuntimeException("Error closing Excel workbook", e);
 		}
 	}

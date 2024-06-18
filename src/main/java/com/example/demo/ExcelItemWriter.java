@@ -31,7 +31,7 @@ public class ExcelItemWriter implements ItemWriter<MyDataObject> {
 				}
 			}
 		}else {
-			logger.info("Total items to write in db : " + chunk.size());
+			logger.info("Total items to write in db : " + chunk.size() + " At time : "+System.currentTimeMillis());
 		}
 	}
 }

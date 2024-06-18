@@ -14,7 +14,7 @@ public interface StdClaimDao {
 	
 	public List<StdClaim> getClaimIds(Date dateEntered, int status);
 
-	void updateStandardDetailSfsDate(List<StdClaim> stdClaims2);
+	void updateStandardDetailSfsDate(List<StdClaim> stdClaims2) throws Exception;
 
 	void updateVoucherDetailsAndStatus(int claimId, String voucher, int error);
 
