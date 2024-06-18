@@ -174,6 +174,7 @@ public class ExcelItemReader implements ItemReader {
 					@Override
 					protected void doInTransactionWithoutResult(TransactionStatus status) {
 						try {
+							logger.info("JOB2: Execution Started at time : " + System.currentTimeMillis());
 							fileWriteService.generateFile();
 
 							EmailUtility.sendEmail(
