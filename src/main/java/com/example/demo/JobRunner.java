@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import com.example.service.FileWriteService;
 
@@ -21,13 +22,16 @@ public class JobRunner {
 	
 	@Autowired
 	FileWriteService fileWriteService;
+	
+	@Autowired
+	private PlatformTransactionManager transactionManager;
 
 	public JobRunner(Job importUserJob, JobLauncher jobLauncher) {
 		this.importUserJob = importUserJob;
 		this.jobLauncher = jobLauncher;
 	}
 
-	@Scheduled(cron = "0 0/5 * ? * *")
+	@Scheduled(cron = "0 0/2 * ? * *")
 	public void run() throws Exception {
 		JobParameters jobParameters = new JobParametersBuilder().addLong("time", System.currentTimeMillis())
 				.toJobParameters();
@@ -55,12 +59,13 @@ public class JobRunner {
 //	}
 	
 
-//	@Scheduled(cron = "0 0/200 * ? * *")
-//	public void downloadAndDecryptProcessedFiles() throws Exception {
-//		System.out.println("Batch Job 4 started ");
-//		fileWriteService.downloadAndDecryptProcessedFiles();
-//	}
-//	
+	@Scheduled(cron = "0 0/2 * ? * *")
+	public void downloadAndDecryptProcessedFiles() throws Exception {
+		System.out.println("Batch Job 2 started ");
+		fileWriteService.downloadAndDecryptProcessedFiles(transactionManager);
+	}
+	
+
 //	@Scheduled(cron = "0 0/200 * ? * *")
 //	public void csvToPdfMigrationJob() throws Exception {
 //		System.out.println("Batch Job 5 started ");
