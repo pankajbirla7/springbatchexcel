@@ -31,12 +31,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.example.service.StdClaimService;
+import com.itextpdf.kernel.colors.DeviceRgb;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
+import com.itextpdf.layout.borders.SolidBorder;
 import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
+import com.itextpdf.layout.property.TextAlignment;
+import com.itextpdf.layout.property.VerticalAlignment;
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
@@ -374,7 +378,11 @@ public class Utility {
 					Table table = new Table(headers.length);
 
 					for (String header : headers) {
-						table.addHeaderCell(new Cell().add(new Paragraph(header)));
+						Cell headerCell = new Cell().add(new Paragraph(header).setBold())
+								.setBackgroundColor(new DeviceRgb(221, 221, 221)) // light grey background
+								.setTextAlignment(TextAlignment.CENTER).setVerticalAlignment(VerticalAlignment.MIDDLE)
+								.setBorder(new SolidBorder(1));
+						table.addHeaderCell(headerCell);
 					}
 
 					for (int i = 1; i < lines.size(); i++) {
