@@ -51,6 +51,9 @@ public class FileWriteServiceImpl implements FileWriteService {
 	Utility utility;
 
 	@Autowired
+	EmailUtility emailUtility;
+	
+	@Autowired
 	StdClaimService stdClaimService;
 
 	@Value("${stg.file.path}")
@@ -149,9 +152,9 @@ public class FileWriteServiceImpl implements FileWriteService {
 
 					logger.info("While generating and encrypting file process the filepath is : " + filePath);
 					if (filePath != null) {
-						encryptFileAndUploadToSftp(filePath);
+						encryptFileAndUploadToSftp(filePath, stdClaim.getFein());
 						stdClaimDao.updateStandardDetailSfsDate(stdClaims2);
-						EmailUtility.sendEmail(
+						emailUtility.sendEmail(
 								"JOB 2 : Generate file and encrypt file and upload to sftp job is success at time "
 										+ System.currentTimeMillis(),
 								Constants.SUCCESSS);
@@ -167,7 +170,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 			logger.error(
 					"JOB 2 : Generate file and encrypt file and upload to sftp job is failed due to "
 							+ Utility.getStackTrace(e));
-			EmailUtility.sendEmail(
+			emailUtility.sendEmail(
 					"JOB 2 : Generate file and encrypt file and upload to sftp job is failed at time "
 							+ System.currentTimeMillis(),
 					Constants.FAILED);
@@ -175,13 +178,13 @@ public class FileWriteServiceImpl implements FileWriteService {
 	}
 ///////////////////////////////Encrypt and Upload File/////////////////////////////////////
 
-	private void encryptFileAndUploadToSftp(String filePath) throws Exception {
+	private void encryptFileAndUploadToSftp(String filePath, int fein) throws Exception {
 		String inputFilePath = filePath;
 		LocalDate today = LocalDate.now();
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMddyyyy");
 		String formattedDate = today.format(formatter);
 
-		String encryptedFileName = "SN12969_" + formattedDate;
+		String encryptedFileName = "SN12969_"+fein+"_" + formattedDate;
 		String outputFilePath = encryptedFileDirectory + "\\" + encryptedFileName + ".gpg";
 
 		utility.moveFileToSFTP(inputFilePath, outputFilePath, publicKeyPath, passphrase, sftpHost, port, sftpUserName,
@@ -420,7 +423,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 					port, sftpUserName, sftpPassword, privateKeyPath, sftpRemoteDownloadDirectory,
 					sftpRemoteArchiveDirectory, true, archiveDownloadDirectory, null);
 			
-			EmailUtility.sendEmail(
+			emailUtility.sendEmail(
 					"JOB 3 : Download files from sftp and Decrypt files and process voucher details job is success at time "
 							+ System.currentTimeMillis(),
 					Constants.SUCCESSS);
@@ -429,18 +432,21 @@ public class FileWriteServiceImpl implements FileWriteService {
 			logger.error(
 					"JOB 3 : downloadAndDecrptFile method, Download files from sftp and Decrypt files and process vpucher details job is failed due to "
 							+ Utility.getStackTrace(e));
-			EmailUtility.sendEmail(
+			emailUtility.sendEmail(
 					"JOB 3 : Download files from sftp and Decrypt files and process vpucher details job is failed at time "
 							+ System.currentTimeMillis(),
 					Constants.FAILED);
 		}
 	}
+	
+	@Value("${email.from}")
+	private String emailFrom;
 
 	@Override
 	public void downloadAndDecryptProcessedFiles(PlatformTransactionManager transactionManager) {
 		this.transactionTemplate = new TransactionTemplate(transactionManager);
 		try {
-			EmailUtility.sendEmail(
+			emailUtility.sendEmail(
 					"JOB 4 : Download processed files from sftp and Decrypt processed files and process voucher details and CSV to PDF Conversion job is started at time "
 							+ System.currentTimeMillis(),
 					Constants.SUCCESSS);
@@ -463,7 +469,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 					} catch (Exception e) {
 						logger.error("JOB 4 : Stored Procedure :"+loadM171Sp + "  is failed due to "
 								+ Utility.getStackTrace(e));
-						EmailUtility.sendEmail(
+						emailUtility.sendEmail(
 								"JOB 4 : Stored Procedure :"+loadM171Sp + "  is failed due to  "+Utility.getStackTrace(e),
 								Constants.FAILED);
 					}
@@ -484,7 +490,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 						} catch (Exception e) {
 							logger.error("JOB 4 : Stored Procedure :"+loadPaymentSummarySp + "  is failed due to "
 									+ Utility.getStackTrace(e));
-							EmailUtility.sendEmail(
+							emailUtility.sendEmail(
 									"JOB 4 : Stored Procedure :"+loadPaymentSummarySp + "  is failed due to  "+Utility.getStackTrace(e),
 									Constants.FAILED);
 						}
@@ -504,7 +510,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 							} catch (Exception e) {
 								logger.error("JOB 4 : Stored Procedure :"+generateVoucherSummarySp + "  is failed due to "
 										+ Utility.getStackTrace(e));
-								EmailUtility.sendEmail(
+								emailUtility.sendEmail(
 										"JOB 4 : Stored Procedure :"+generateVoucherSummarySp + "  is failed due to  "+Utility.getStackTrace(e),
 										Constants.FAILED);
 							}
@@ -518,26 +524,26 @@ public class FileWriteServiceImpl implements FileWriteService {
 							migrateCsvToPdfFiles();
 						}catch(Exception e) {
 							logger.error("Error occured during migaretCsvToPdfFiles due to :: "+Utility.getStackTrace(e));
-							EmailUtility.sendEmail(
+							emailUtility.sendEmail(
 									"JOB 4 : migrateCsvToPdfFiles is failed due to  "+Utility.getStackTrace(e),
 									Constants.FAILED);
 						}
 					} else {
-						EmailUtility.sendEmail("Calling stored procedure "+generateVoucherSummarySp+" -- response is not 0 response is : " + spResponse
+						emailUtility.sendEmail("Calling stored procedure "+generateVoucherSummarySp+" -- response is not 0 response is : " + spResponse
 								+ " - at time " + System.currentTimeMillis(), Constants.SUCCESSS);
 					}
 					
 				} else {
-					EmailUtility.sendEmail("Calling stored procedure "+loadPaymentSummarySp+" -- response is not 0 response is : " + spResponse
+					emailUtility.sendEmail("Calling stored procedure "+loadPaymentSummarySp+" -- response is not 0 response is : " + spResponse
 							+ " - at time " + System.currentTimeMillis(), Constants.SUCCESSS);
 				}
 				
 			} else {
-				EmailUtility.sendEmail("Calling stored procedure "+loadM171Sp+" -- response is not 0 response is : " + spResponse
+				emailUtility.sendEmail("Calling stored procedure "+loadM171Sp+" -- response is not 0 response is : " + spResponse
 						+ " - at time " + System.currentTimeMillis(), Constants.SUCCESSS);
 			}
 			
-			EmailUtility.sendEmail(
+			emailUtility.sendEmail(
 					"JOB 4 : Download processed files from sftp and Decrypt processed files and process voucher details and CSV to PDF Conversion job is ended at time "
 							+ System.currentTimeMillis(),
 					Constants.SUCCESSS);
@@ -546,7 +552,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 			logger.error(
 					"JOB 4 : downloadAndDecryptProcessedFiles method, Download files from sftp and Decrypt files and process voucher details and CSV to PDF Conversion job is failed due to "
 							+ Utility.getStackTrace(e));
-			EmailUtility.sendEmail(
+			emailUtility.sendEmail(
 					"JOB 4 : Download processed files from sftp and Decrypt processed files and process voucher details and CSV to PDF Conversion job is failed at time "
 							+ System.currentTimeMillis(),
 					Constants.FAILED);

@@ -2,17 +2,23 @@ package com.example.demo;
 
 import javax.mail.*;
 import javax.mail.internet.*;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
 import java.util.Properties;
 
+@Component
 public class EmailUtility {
 	
-	public static void sendEmail(String msg, String status) {
-		// Sender's email address
-        String from = "Adap@health.ny.gov";
-        // Recipient's email address
-        String to = "pamins0@gmail.com";
-        // Sender's email password
-        
+	@Value("${email.from}")
+	private String from;
+	
+	@Value("${email.to}")
+	private String to;
+	
+	public void sendEmail(String msg, String status) {
+		
         // Setup mail server properties
         Properties props = new Properties();
         props.put("mail.smtp.host", "MailHost.health.state.ny.usmail.svc.ny.gov");
@@ -42,5 +48,4 @@ public class EmailUtility {
             mex.printStackTrace();
         }
 	}
-
 }
