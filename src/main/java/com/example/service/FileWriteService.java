@@ -1,13 +1,15 @@
 package com.example.service;
 
+import org.springframework.transaction.PlatformTransactionManager;
+
 public interface FileWriteService {
 	
 	public void generateFile();
 	
 	public void downloadAndDecrptFile();
 	
-	public void downloadAndDecryptProcessedFiles();
+	public void downloadAndDecryptProcessedFiles(PlatformTransactionManager transactionManager);
 	
-	public void migrateCsvToPdfFiles();
+	public void migrateCsvToPdfFiles() throws Exception;
 
 }

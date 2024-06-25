@@ -358,7 +358,7 @@ public class Utility {
 		return claimId;
 	}
 
-	public void migaretCsvToPdfFiles(String csvFilePath, String pdfFilePath) {
+	public void migaretCsvToPdfFiles(String csvFilePath, String pdfFilePath) throws Exception {
 		try {
 			List<Path> filePaths = listFiles(csvFilePath);
 			for (Path filePath : filePaths) {
@@ -398,8 +398,8 @@ public class Utility {
 				document.close();
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
 			logger.error("Error occured during migaretCsvToPdfFiles due to :: "+getStackTrace(e));
+			throw e;
 		}
 	}
 
