@@ -72,6 +72,9 @@ public class ExcelItemReader implements ItemReader {
 
 	@Autowired
 	FileWriteService fileWriteService;
+	
+	@Autowired
+	EmailUtility emailUtility;
 
 	private final TransactionTemplate transactionTemplate;
 
@@ -140,7 +143,7 @@ public class ExcelItemReader implements ItemReader {
 							processFile(rowIterator, resource);
 						} catch (Exception e) {
 							logger.error("JOB 1 : File processing job is failed due to " + Utility.getStackTrace(e));
-							EmailUtility.sendEmail(
+							emailUtility.sendEmail(
 									"JOB 1 : File processing job is failed at time " + System.currentTimeMillis(),
 									Constants.FAILED);
 						}
@@ -151,7 +154,7 @@ public class ExcelItemReader implements ItemReader {
 			} catch (Exception e) {
 				logger.error("File processing failed for file " + resource.getFile().getAbsolutePath() + " due to :: "
 						+ Utility.getStackTrace(e));
-				EmailUtility.sendEmail("File processing failed for file " + resource.getFile().getAbsolutePath()
+				emailUtility.sendEmail("File processing failed for file " + resource.getFile().getAbsolutePath()
 						+ " :: at time " + System.currentTimeMillis() + " due to : " + e.getStackTrace(),
 						Constants.FAILED);
 				throw new RuntimeException("Error opening Excel file", e);
@@ -174,7 +177,7 @@ public class ExcelItemReader implements ItemReader {
 					} catch (Exception e) {
 						logger.error("JOB 2 : Generate file and encrypt file and upload to sftp job is failed due to "
 								+ Utility.getStackTrace(e));
-						EmailUtility.sendEmail(
+						emailUtility.sendEmail(
 								"JOB 2 : Generate file and encrypt file and upload to sftp job is failed at time "
 										+ System.currentTimeMillis(),
 								Constants.FAILED);
@@ -197,7 +200,7 @@ public class ExcelItemReader implements ItemReader {
 							logger.error(
 									"JOB 2 : Generate file and encrypt file and upload to sftp job is failed due to "
 											+ Utility.getStackTrace(e));
-							EmailUtility.sendEmail(
+							emailUtility.sendEmail(
 									"JOB 2 : Generate file and encrypt file and upload to sftp job is failed at time "
 											+ System.currentTimeMillis(),
 									Constants.FAILED);
@@ -225,7 +228,7 @@ public class ExcelItemReader implements ItemReader {
 							logger.error(
 									"JOB 3 : Download files from sftp and Decrypt files and process vpucher details job is failed due to "
 											+ Utility.getStackTrace(e));
-							EmailUtility.sendEmail(
+							emailUtility.sendEmail(
 									"JOB 3 : Download files from sftp and Decrypt files and process vpucher details job is failed at time "
 											+ System.currentTimeMillis(),
 									Constants.FAILED);
@@ -234,12 +237,12 @@ public class ExcelItemReader implements ItemReader {
 				});
 
 			} else {
-				EmailUtility.sendEmail("Calling stored procedure response is not 0 response is : " + spResponse
+				emailUtility.sendEmail("Calling stored procedure response is not 0 response is : " + spResponse
 						+ " - at time " + System.currentTimeMillis(), Constants.FAILED);
 			}
 		} catch (Exception e) {
 			logger.error("Exception occurred from JOB 1,2,3 and failed due to " + Utility.getStackTrace(e));
-			EmailUtility.sendEmail("Calling stored procedure and second and third job error occured - at time "
+			emailUtility.sendEmail("Calling stored procedure and second and third job error occured - at time "
 					+ System.currentTimeMillis(), Constants.FAILED);
 		}
 
@@ -362,21 +365,21 @@ public class ExcelItemReader implements ItemReader {
 
 					moveFilesToArchiveFolder(items.get(0).getFein(), resource, agencyName);
 
-					EmailUtility.sendEmail("JOB 1 : File processing and records success for file - "
+					emailUtility.sendEmail("JOB 1 : File processing and records success for file - "
 							+ resource.getFile().getAbsolutePath(), Constants.SUCCESSS);
 				} else {
-					EmailUtility.sendEmail("Agency Name not found for the fein :" + items.get(0).getFein()
+					emailUtility.sendEmail("Agency Name not found for the fein :" + items.get(0).getFein()
 							+ " and failed for file - " + resource.getFile().getAbsolutePath(), Constants.FAILED);
 				}
 			} catch (Exception e) {
-				EmailUtility.sendEmail(
+				emailUtility.sendEmail(
 						"JOB 1 : File processing failed for file - " + resource.getFile().getAbsolutePath(),
 						Constants.FAILED);
 				logger.error("Exception occurred while executing process file method and failed due to "
 						+ Utility.getStackTrace(e));
 			}
 		} else {
-			EmailUtility.sendEmail(
+			emailUtility.sendEmail(
 					"JOB 1 : File processing job is not having records for the file :: "
 							+ resource.getFile().getAbsolutePath() + " at time " + System.currentTimeMillis(),
 					Constants.SUCCESSS);
@@ -429,7 +432,7 @@ public class ExcelItemReader implements ItemReader {
 			} catch (Exception e) {
 				logger.error("Error moving the file due to :: " + Utility.getStackTrace(e));
 				try {
-					EmailUtility.sendEmail("File moving to archive folder got failed for file - "
+					emailUtility.sendEmail("File moving to archive folder got failed for file - "
 							+ resource.getFile().getAbsolutePath(), Constants.FAILED);
 				} catch (Exception ex) {
 					logger.error("Error occured while moving files to archive folder inside catch due to : "

@@ -8,6 +8,7 @@ public class StdClaim {
 	Date dateEntered;
 	int fileid;
 	Date dateToSfs;
+	int fein;
 
 	public int getId() {
 		return id;
@@ -41,4 +42,12 @@ public class StdClaim {
 		this.dateToSfs = dateToSfs;
 	}
 
+	public int getFein() {
+		return fein;
+	}
+
+	public void setFein(int fein) {
+		this.fein = fein;
+	}
+	
 }

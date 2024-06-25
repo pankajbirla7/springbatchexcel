@@ -26,7 +26,7 @@ public class StdClaimDaoImpl implements StdClaimDao {
 	public List<StdClaim> getStdClaimDetails(int processed) {
 		List<StdClaim> stdClaimList = new ArrayList<>();
 		try {
-			String sql = "SELECT distinct File_id FROM std_claims where DateToSFS is null and status_cd = ?";
+			String sql = "SELECT distinct File_id, FEIN FROM std_claims where DateToSFS is null and status_cd = ?";
 	
 			List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, new Object[] { processed });
 			logger.info("Query executed to find stdclaim details based on dateToSfs is null and Status_CD as - "+processed+ 
@@ -35,6 +35,7 @@ public class StdClaimDaoImpl implements StdClaimDao {
 				StdClaim stdClaim = new StdClaim();
 				int fileId = (int) row.get("File_id");
 				stdClaim.setFileid(fileId);
+				stdClaim.setFein((int)row.get("FEIN"));
 	
 				stdClaimList.add(stdClaim);
 			}
