@@ -36,7 +36,7 @@ public class PublicKeyEncryption {
 	static final Logger logger = LoggerFactory.getLogger(PublicKeyEncryption.class);
 
 	public static void encryptFile(String inputFilePath, String outputFilePath, String publicKeyPath)
-			throws IOException, PGPException {
+			throws Exception {
 		try (OutputStream outputStream = new FileOutputStream(outputFilePath)) {
 			PGPPublicKey publicKey = readPublicKey(publicKeyPath);
 
