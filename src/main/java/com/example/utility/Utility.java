@@ -60,16 +60,18 @@ public class Utility {
 
 	public void encryptAndUpload(String inputFilePath, String outputFilePath, String publicKeyPath, String passphrase,
 			String host, int port, String username, String password, String privateKeyPath, String remoteDirectory)
-			throws IOException, PGPException, JSchException {
-		// Encrypt the file
-		PublicKeyEncryption.encryptFile(inputFilePath, outputFilePath, publicKeyPath);
-
-		// Upload the encrypted file to SFTP server
+			throws Exception {
 		try {
+			// Encrypt the file
+			PublicKeyEncryption.encryptFile(inputFilePath, outputFilePath, publicKeyPath);
+	
+			// Upload the encrypted file to SFTP server
+		
 			uploadFile(outputFilePath, host, port, username, password, passphrase, privateKeyPath, remoteDirectory);
 		} catch (Exception e) {
 			e.printStackTrace();
 			logger.error("Error occured during encryptAndUpload method due to : "+getStackTrace(e));
+			throw e;
 		}
 	}
 
