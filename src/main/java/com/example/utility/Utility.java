@@ -124,21 +124,25 @@ public class Utility {
 /////////////////////////////// Download SFTP File And Decryopt
 /////////////////////////////// ///////////////////////////////
 
-	public void downloadFilesFromSftpAndDecrypt(String downloadFilePath, String decryptFilePath, String passphrase,
+	public int downloadFilesFromSftpAndDecrypt(String downloadFilePath, String decryptFilePath, String passphrase,
 			String host, int port, String username, String password, String privateKeyPath, String remoteDirectory,
 			String sftpRemoteArchiveDirectory, boolean isProcessVoucherDetails, String archiveDownloadDirectory,
 			String filePattern) throws Exception {
+		int count = 0;
 		try {
-			downloadFiles(host, port, username, password, passphrase, privateKeyPath, downloadFilePath, remoteDirectory,
+			count = downloadFiles(host, port, username, password, passphrase, privateKeyPath, downloadFilePath, remoteDirectory,
 					filePattern);
-			decryptFile(passphrase, privateKeyPath, downloadFilePath, decryptFilePath, isProcessVoucherDetails);
-			archiveSftpFiles(host, port, username, password, passphrase, privateKeyPath, downloadFilePath,
-					remoteDirectory, sftpRemoteArchiveDirectory, filePattern);
-			archiveFiles(downloadFilePath, archiveDownloadDirectory);
+			if(count > 0) {
+				decryptFile(passphrase, privateKeyPath, downloadFilePath, decryptFilePath, isProcessVoucherDetails);
+				archiveSftpFiles(host, port, username, password, passphrase, privateKeyPath, downloadFilePath,
+						remoteDirectory, sftpRemoteArchiveDirectory, filePattern);
+				archiveFiles(downloadFilePath, archiveDownloadDirectory);
+			}
 		} catch (Exception e) {
 			logger.error("Error occured during downloadFilesFromSftpAndDecrypt method due to : "+getStackTrace(e));
 			throw e;
 		}
+		return count;
 	}
 
 	private void archiveFiles(String downloadFilePath, String archiveDownloadDirectory) throws Exception {
@@ -249,8 +253,9 @@ public class Utility {
 		}
 	}
 
-	private static void downloadFiles(String host, int port, String username, String password, String passphrase,
+	private static int downloadFiles(String host, int port, String username, String password, String passphrase,
 			String privateKeyPath, String downloadFilePath, String remoteDirectory, String filePattern) throws Exception {
+		int count = 0;
 		try {
 			JSch jsch = new JSch();
 			Session session = jsch.getSession(username, host, port);
@@ -274,12 +279,14 @@ public class Utility {
 							channelSftp.get(remoteFileName, localFilePath);
 
 							logger.info("File downloaded : " + remoteFileName);
+							count++;
 						}
 					} else {
 						String localFilePath = downloadFilePath + File.separator + remoteFileName;
 						channelSftp.get(remoteFileName, localFilePath);
 
 						logger.info("File downloaded: " + remoteFileName);
+						count++;
 					}
 				}
 			}
@@ -292,6 +299,7 @@ public class Utility {
 			throw e;
 		}
 		logger.info("All files downloaded successfully.");
+		return count;
 	}
 
 	public void parseFilesAndSaveVoucherDetails(List<String> outputFilePaths) throws Exception {

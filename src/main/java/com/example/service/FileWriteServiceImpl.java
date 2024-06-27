@@ -417,17 +417,18 @@ public class FileWriteServiceImpl implements FileWriteService {
 	/////////////////////////////// File/////////////////////////////////
 	@Override
 	public void downloadAndDecrptFile() {
-
+		int count = 0;
 		try {
-			utility.downloadFilesFromSftpAndDecrypt(downloadSftpFilePath, decryptedFileDirectory, passphrase, sftpHost,
+			count = utility.downloadFilesFromSftpAndDecrypt(downloadSftpFilePath, decryptedFileDirectory, passphrase, sftpHost,
 					port, sftpUserName, sftpPassword, privateKeyPath, sftpRemoteDownloadDirectory,
 					sftpRemoteArchiveDirectory, true, archiveDownloadDirectory, null);
 			
-			emailUtility.sendEmail(
-					"JOB 3 : Download files from sftp and Decrypt files and process voucher details job is success at time "
-							+ System.currentTimeMillis(),
-					Constants.SUCCESSS);
-			
+			if(count > 0) {
+				emailUtility.sendEmail(
+						"JOB 3 : Download files from sftp and Decrypt files and process voucher details job is success at time "
+								+ System.currentTimeMillis(),
+						Constants.SUCCESSS);
+			}
 		} catch (Exception e) {
 			logger.error(
 					"JOB 3 : downloadAndDecrptFile method, Download files from sftp and Decrypt files and process vpucher details job is failed due to "
@@ -438,80 +439,58 @@ public class FileWriteServiceImpl implements FileWriteService {
 					Constants.FAILED);
 		}
 	}
-	
-	@Value("${email.from}")
-	private String emailFrom;
 
 	@Override
 	public void downloadAndDecryptProcessedFiles(PlatformTransactionManager transactionManager) {
 		this.transactionTemplate = new TransactionTemplate(transactionManager);
+		int count = 0;
 		try {
 			emailUtility.sendEmail(
 					"JOB 4 : Download processed files from sftp and Decrypt processed files and process voucher details and CSV to PDF Conversion job is started at time "
 							+ System.currentTimeMillis(),
 					Constants.SUCCESSS);
 			
-			utility.downloadFilesFromSftpAndDecrypt(downloadSftpProcessedFilePath, decryptedProcessedFileDirectory,
+			count = utility.downloadFilesFromSftpAndDecrypt(downloadSftpProcessedFilePath, decryptedProcessedFileDirectory,
 					passphrase, sftpHost, port, sftpUserName, sftpPassword, privateKeyPath,
 					sftpProcessedRemoteDownloadDirectory, sftpProcessedRemoteArchiveDirectory, false,
 					archiveProcessedDownloadDirectory, Constants.FILE_PATTERN);
-			
-			final Integer[] spResponses = new Integer[1];
-			Integer spResponse = 1;
-
-			transactionTemplate.execute(new TransactionCallbackWithoutResult() {
-				@Override
-				protected void doInTransactionWithoutResult(TransactionStatus status) {
-					try {
-						spResponses[0] = callStoredProcedure(loadM171Sp);
-						logger.info("Executing Stored procedure :"+loadM171Sp+" :: And Resposne is : " + spResponse + " :: Completed at time : "
-								+ System.currentTimeMillis());
-					} catch (Exception e) {
-						logger.error("JOB 4 : Stored Procedure :"+loadM171Sp + "  is failed due to "
-								+ Utility.getStackTrace(e));
-						emailUtility.sendEmail(
-								"JOB 4 : Stored Procedure :"+loadM171Sp + "  is failed due to  "+Utility.getStackTrace(e),
-								Constants.FAILED);
-					}
-				}
-			});
-
-			boolean isJobResume = spResponses[0] == 0 ? true : false;
-
-			if (isJobResume) {
-				
+			if(count > 0) {
+				final Integer[] spResponses = new Integer[1];
+				Integer spResponse = 1;
+	
 				transactionTemplate.execute(new TransactionCallbackWithoutResult() {
 					@Override
 					protected void doInTransactionWithoutResult(TransactionStatus status) {
 						try {
-							spResponses[0] = callStoredProcedure(loadPaymentSummarySp);
-							logger.info("Executing Stored procedure :"+loadPaymentSummarySp+" :: And Resposne is : " + spResponse + " :: Completed at time : "
+							spResponses[0] = callStoredProcedure(loadM171Sp);
+							logger.info("Executing Stored procedure :"+loadM171Sp+" :: And Resposne is : " + spResponse + " :: Completed at time : "
 									+ System.currentTimeMillis());
 						} catch (Exception e) {
-							logger.error("JOB 4 : Stored Procedure :"+loadPaymentSummarySp + "  is failed due to "
+							logger.error("JOB 4 : Stored Procedure :"+loadM171Sp + "  is failed due to "
 									+ Utility.getStackTrace(e));
 							emailUtility.sendEmail(
-									"JOB 4 : Stored Procedure :"+loadPaymentSummarySp + "  is failed due to  "+Utility.getStackTrace(e),
+									"JOB 4 : Stored Procedure :"+loadM171Sp + "  is failed due to  "+Utility.getStackTrace(e),
 									Constants.FAILED);
 						}
 					}
 				});
-				
-				isJobResume = spResponses[0] == 0 ? true : false;
-				
+	
+				boolean isJobResume = spResponses[0] == 0 ? true : false;
+	
 				if (isJobResume) {
+					
 					transactionTemplate.execute(new TransactionCallbackWithoutResult() {
 						@Override
 						protected void doInTransactionWithoutResult(TransactionStatus status) {
 							try {
-								spResponses[0] = callStoredProcedure(generateVoucherSummarySp);
-								logger.info("Executing Stored procedure :"+generateVoucherSummarySp+" :: And Resposne is : " + spResponse + " :: Completed at time : "
+								spResponses[0] = callStoredProcedure(loadPaymentSummarySp);
+								logger.info("Executing Stored procedure :"+loadPaymentSummarySp+" :: And Resposne is : " + spResponse + " :: Completed at time : "
 										+ System.currentTimeMillis());
 							} catch (Exception e) {
-								logger.error("JOB 4 : Stored Procedure :"+generateVoucherSummarySp + "  is failed due to "
+								logger.error("JOB 4 : Stored Procedure :"+loadPaymentSummarySp + "  is failed due to "
 										+ Utility.getStackTrace(e));
 								emailUtility.sendEmail(
-										"JOB 4 : Stored Procedure :"+generateVoucherSummarySp + "  is failed due to  "+Utility.getStackTrace(e),
+										"JOB 4 : Stored Procedure :"+loadPaymentSummarySp + "  is failed due to  "+Utility.getStackTrace(e),
 										Constants.FAILED);
 							}
 						}
@@ -520,34 +499,56 @@ public class FileWriteServiceImpl implements FileWriteService {
 					isJobResume = spResponses[0] == 0 ? true : false;
 					
 					if (isJobResume) {
-						try {
-							migrateCsvToPdfFiles();
-						}catch(Exception e) {
-							logger.error("Error occured during migaretCsvToPdfFiles due to :: "+Utility.getStackTrace(e));
-							emailUtility.sendEmail(
-									"JOB 4 : migrateCsvToPdfFiles is failed due to  "+Utility.getStackTrace(e),
-									Constants.FAILED);
+						transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+							@Override
+							protected void doInTransactionWithoutResult(TransactionStatus status) {
+								try {
+									spResponses[0] = callStoredProcedure(generateVoucherSummarySp);
+									logger.info("Executing Stored procedure :"+generateVoucherSummarySp+" :: And Resposne is : " + spResponse + " :: Completed at time : "
+											+ System.currentTimeMillis());
+								} catch (Exception e) {
+									logger.error("JOB 4 : Stored Procedure :"+generateVoucherSummarySp + "  is failed due to "
+											+ Utility.getStackTrace(e));
+									emailUtility.sendEmail(
+											"JOB 4 : Stored Procedure :"+generateVoucherSummarySp + "  is failed due to  "+Utility.getStackTrace(e),
+											Constants.FAILED);
+								}
+							}
+						});
+						
+						isJobResume = spResponses[0] == 0 ? true : false;
+						
+						if (isJobResume) {
+							try {
+								migrateCsvToPdfFiles();
+							}catch(Exception e) {
+								logger.error("Error occured during migaretCsvToPdfFiles due to :: "+Utility.getStackTrace(e));
+								emailUtility.sendEmail(
+										"JOB 4 : migrateCsvToPdfFiles is failed due to  "+Utility.getStackTrace(e),
+										Constants.FAILED);
+							}
+						} else {
+							emailUtility.sendEmail("Calling stored procedure "+generateVoucherSummarySp+" -- response is not 0 response is : " + spResponse
+									+ " - at time " + System.currentTimeMillis(), Constants.SUCCESSS);
 						}
+						
 					} else {
-						emailUtility.sendEmail("Calling stored procedure "+generateVoucherSummarySp+" -- response is not 0 response is : " + spResponse
+						emailUtility.sendEmail("Calling stored procedure "+loadPaymentSummarySp+" -- response is not 0 response is : " + spResponse
 								+ " - at time " + System.currentTimeMillis(), Constants.SUCCESSS);
 					}
 					
 				} else {
-					emailUtility.sendEmail("Calling stored procedure "+loadPaymentSummarySp+" -- response is not 0 response is : " + spResponse
+					emailUtility.sendEmail("Calling stored procedure "+loadM171Sp+" -- response is not 0 response is : " + spResponse
 							+ " - at time " + System.currentTimeMillis(), Constants.SUCCESSS);
 				}
 				
-			} else {
-				emailUtility.sendEmail("Calling stored procedure "+loadM171Sp+" -- response is not 0 response is : " + spResponse
-						+ " - at time " + System.currentTimeMillis(), Constants.SUCCESSS);
+				if(count > 0) {
+					emailUtility.sendEmail(
+							"JOB 4 : Download processed files from sftp and Decrypt processed files and process voucher details and CSV to PDF Conversion job is ended at time "
+									+ System.currentTimeMillis(),
+							Constants.SUCCESSS);
+				}
 			}
-			
-			emailUtility.sendEmail(
-					"JOB 4 : Download processed files from sftp and Decrypt processed files and process voucher details and CSV to PDF Conversion job is ended at time "
-							+ System.currentTimeMillis(),
-					Constants.SUCCESSS);
-			
 		} catch (Exception e) {
 			logger.error(
 					"JOB 4 : downloadAndDecryptProcessedFiles method, Download files from sftp and Decrypt files and process voucher details and CSV to PDF Conversion job is failed due to "

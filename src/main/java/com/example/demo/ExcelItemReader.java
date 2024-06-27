@@ -130,76 +130,54 @@ public class ExcelItemReader implements ItemReader {
 		resources = inputFiles();
 		logger.info("reading all input files total files are : " + resources);
 		logger.info("JOB 1: Started at time " + System.currentTimeMillis());
-		for (Resource resource : resources) {
-			try (InputStream inputStream = resource.getInputStream()) {
-				this.workbook = new XSSFWorkbook(inputStream);
-				this.rowIterator = workbook.getSheetAt(0).iterator();
-				rowIterator.hasNext();
-				rowIterator.next();
-				transactionTemplate.execute(new TransactionCallbackWithoutResult() {
-					@Override
-					protected void doInTransactionWithoutResult(TransactionStatus status) {
-						try {
-							processFile(rowIterator, resource);
-						} catch (Exception e) {
-							logger.error("JOB 1 : File processing job is failed due to " + Utility.getStackTrace(e));
-							emailUtility.sendEmail(
-									"JOB 1 : File processing job is failed at time " + System.currentTimeMillis(),
-									Constants.FAILED);
+		if(resources.length > 0) {
+			for (Resource resource : resources) {
+				try (InputStream inputStream = resource.getInputStream()) {
+					this.workbook = new XSSFWorkbook(inputStream);
+					this.rowIterator = workbook.getSheetAt(0).iterator();
+					rowIterator.hasNext();
+					rowIterator.next();
+					transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+						@Override
+						protected void doInTransactionWithoutResult(TransactionStatus status) {
+							try {
+								processFile(rowIterator, resource);
+							} catch (Exception e) {
+								logger.error("JOB 1 : File processing job is failed due to " + Utility.getStackTrace(e));
+								emailUtility.sendEmail(
+										"JOB 1 : File processing job is failed at time " + System.currentTimeMillis(),
+										Constants.FAILED);
+							}
 						}
-					}
-				});
-
-				closeWorkbook();
-			} catch (Exception e) {
-				logger.error("File processing failed for file " + resource.getFile().getAbsolutePath() + " due to :: "
-						+ Utility.getStackTrace(e));
-				emailUtility.sendEmail("File processing failed for file " + resource.getFile().getAbsolutePath()
-						+ " :: at time " + System.currentTimeMillis() + " due to : " + e.getStackTrace(),
-						Constants.FAILED);
-				throw new RuntimeException("Error opening Excel file", e);
-			}
-		}
-
-		logger.info("JOB1: Completed at time : " + System.currentTimeMillis());
-
-		try {
-			final Integer[] spResponses = new Integer[1];
-			Integer spResponse = 1;
-
-			transactionTemplate.execute(new TransactionCallbackWithoutResult() {
-				@Override
-				protected void doInTransactionWithoutResult(TransactionStatus status) {
-					try {
-						spResponses[0] = callStoredProcedure();
-						logger.info("Stored procedure Resposne : " + spResponse + " :: Completed at time : "
-								+ System.currentTimeMillis());
-					} catch (Exception e) {
-						logger.error("JOB 2 : Generate file and encrypt file and upload to sftp job is failed due to "
-								+ Utility.getStackTrace(e));
-						emailUtility.sendEmail(
-								"JOB 2 : Generate file and encrypt file and upload to sftp job is failed at time "
-										+ System.currentTimeMillis(),
-								Constants.FAILED);
-					}
+					});
+	
+					closeWorkbook();
+				} catch (Exception e) {
+					logger.error("File processing failed for file " + resource.getFile().getAbsolutePath() + " due to :: "
+							+ Utility.getStackTrace(e));
+					emailUtility.sendEmail("File processing failed for file " + resource.getFile().getAbsolutePath()
+							+ " :: at time " + System.currentTimeMillis() + " due to : " + e.getStackTrace(),
+							Constants.FAILED);
+					throw new RuntimeException("Error opening Excel file", e);
 				}
-			});
-
-			boolean isJobResume = spResponses[0] == 0 ? true : false;
-
-			if (isJobResume) {
-				logger.info("JOB2: Started at time : " + System.currentTimeMillis());
+			}
+	
+			logger.info("JOB1: Completed at time : " + System.currentTimeMillis());
+	
+			try {
+				final Integer[] spResponses = new Integer[1];
+				Integer spResponse = 1;
+	
 				transactionTemplate.execute(new TransactionCallbackWithoutResult() {
 					@Override
 					protected void doInTransactionWithoutResult(TransactionStatus status) {
 						try {
-							logger.info("JOB2: Execution Started at time : " + System.currentTimeMillis());
-							fileWriteService.generateFile();
-							logger.info("JOB2: Completed at time : " + System.currentTimeMillis());
+							spResponses[0] = callStoredProcedure();
+							logger.info("Stored procedure Resposne : " + spResponse + " :: Completed at time : "
+									+ System.currentTimeMillis());
 						} catch (Exception e) {
-							logger.error(
-									"JOB 2 : Generate file and encrypt file and upload to sftp job is failed due to "
-											+ Utility.getStackTrace(e));
+							logger.error("JOB 2 : Generate file and encrypt file and upload to sftp job is failed due to "
+									+ Utility.getStackTrace(e));
 							emailUtility.sendEmail(
 									"JOB 2 : Generate file and encrypt file and upload to sftp job is failed at time "
 											+ System.currentTimeMillis(),
@@ -207,45 +185,70 @@ public class ExcelItemReader implements ItemReader {
 						}
 					}
 				});
-
-				logger.info("Thread Sleep for 30 mint after JOB2 executed at time : " + System.currentTimeMillis());
-				try {
-					Thread.sleep(30 * 60 * 1000);
-				} catch (InterruptedException e) {
-					logger.error("JOB 2 an JOB 3 Hault Time : Error occured while Thread is in sleep state :: "
-							+ Utility.getStackTrace(e));
-				}
-
-				logger.info("JOB3: Started at time : " + System.currentTimeMillis());
-				transactionTemplate.execute(new TransactionCallbackWithoutResult() {
-					@Override
-					protected void doInTransactionWithoutResult(TransactionStatus status) {
-						try {
-							logger.info("JOB 3: Execution Started at time : " + System.currentTimeMillis());
-							fileWriteService.downloadAndDecrptFile();
-							logger.info("JOB 3: Completed at time : " + System.currentTimeMillis());
-						} catch (Exception e) {
-							logger.error(
-									"JOB 3 : Download files from sftp and Decrypt files and process vpucher details job is failed due to "
-											+ Utility.getStackTrace(e));
-							emailUtility.sendEmail(
-									"JOB 3 : Download files from sftp and Decrypt files and process vpucher details job is failed at time "
-											+ System.currentTimeMillis(),
-									Constants.FAILED);
+	
+				boolean isJobResume = spResponses[0] == 0 ? true : false;
+	
+				if (isJobResume) {
+					logger.info("JOB2: Started at time : " + System.currentTimeMillis());
+					transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+						@Override
+						protected void doInTransactionWithoutResult(TransactionStatus status) {
+							try {
+								logger.info("JOB2: Execution Started at time : " + System.currentTimeMillis());
+								fileWriteService.generateFile();
+								logger.info("JOB2: Completed at time : " + System.currentTimeMillis());
+							} catch (Exception e) {
+								logger.error(
+										"JOB 2 : Generate file and encrypt file and upload to sftp job is failed due to "
+												+ Utility.getStackTrace(e));
+								emailUtility.sendEmail(
+										"JOB 2 : Generate file and encrypt file and upload to sftp job is failed at time "
+												+ System.currentTimeMillis(),
+										Constants.FAILED);
+							}
 						}
+					});
+	
+					logger.info("Thread Sleep for 30 mint after JOB2 executed at time : " + System.currentTimeMillis());
+					try {
+						Thread.sleep(30 * 60 * 1000);
+					} catch (InterruptedException e) {
+						logger.error("JOB 2 an JOB 3 Hault Time : Error occured while Thread is in sleep state :: "
+								+ Utility.getStackTrace(e));
 					}
-				});
-
-			} else {
-				emailUtility.sendEmail("Calling stored procedure response is not 0 response is : " + spResponse
-						+ " - at time " + System.currentTimeMillis(), Constants.FAILED);
+	
+					logger.info("JOB3: Started at time : " + System.currentTimeMillis());
+					transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+						@Override
+						protected void doInTransactionWithoutResult(TransactionStatus status) {
+							try {
+								logger.info("JOB 3: Execution Started at time : " + System.currentTimeMillis());
+								fileWriteService.downloadAndDecrptFile();
+								logger.info("JOB 3: Completed at time : " + System.currentTimeMillis());
+							} catch (Exception e) {
+								logger.error(
+										"JOB 3 : Download files from sftp and Decrypt files and process vpucher details job is failed due to "
+												+ Utility.getStackTrace(e));
+								emailUtility.sendEmail(
+										"JOB 3 : Download files from sftp and Decrypt files and process vpucher details job is failed at time "
+												+ System.currentTimeMillis(),
+										Constants.FAILED);
+							}
+						}
+					});
+	
+				} else {
+					emailUtility.sendEmail("Calling stored procedure response is not 0 response is : " + spResponse
+							+ " - at time " + System.currentTimeMillis(), Constants.FAILED);
+				}
+			} catch (Exception e) {
+				logger.error("Exception occurred from JOB 1,2,3 and failed due to " + Utility.getStackTrace(e));
+				emailUtility.sendEmail("Calling stored procedure and second and third job error occured - at time "
+						+ System.currentTimeMillis(), Constants.FAILED);
 			}
-		} catch (Exception e) {
-			logger.error("Exception occurred from JOB 1,2,3 and failed due to " + Utility.getStackTrace(e));
-			emailUtility.sendEmail("Calling stored procedure and second and third job error occured - at time "
-					+ System.currentTimeMillis(), Constants.FAILED);
+	
+			return null;
 		}
-
 		return null;
 	}
 
