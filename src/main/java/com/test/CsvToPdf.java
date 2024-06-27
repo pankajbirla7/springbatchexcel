@@ -12,11 +12,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.io.FilenameUtils;
 
 import com.example.demo.Constants;
+import com.itextpdf.kernel.colors.Color;
+import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.colors.DeviceRgb;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
@@ -26,6 +30,7 @@ import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
 import com.itextpdf.layout.property.TextAlignment;
+import com.itextpdf.layout.property.UnitValue;
 import com.itextpdf.layout.property.VerticalAlignment;
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
 
@@ -39,7 +44,75 @@ public class CsvToPdf {
 
 		String htmlFilePath = "D:\\Projects\\Ronak\\htmlfiles\\myhtml.html";
 		csvToPdf.processHtmlFile(htmlFilePath, pdfFile);
+		
+		csvToPdf.createPdfFileManually(pdfFile);
 	}
+	
+	
+
+	private void createPdfFileManually(String pdfFile) {
+		Map<String, String> data = new LinkedHashMap<>();
+        data.put("Voucher Date Range", "04/02/2024-04/30/2024");
+        data.put("Date Created", "2024-06-25");
+        data.put("Filename Submitted", "Alliance April 2024_340B Reinvestment_Voucher.xlsx");
+        data.put("# Claims Submitted", "1174");
+        data.put("# Claims Paid", "0");
+        data.put("Reimbursement Rate Per Claim", "$505.00");
+        data.put("Total Amount Reimbursed", "0.00");
+        data.put("Date Sent To SFS", "2024-05-24");
+        data.put("# Claims Rejected", "1174");
+        data.put("Rejected Reason", "New;Error_in_SFS");
+
+        // Define the output PDF file path
+        String dest = pdfFile+"output_border.pdf";
+        Color borderColor = new DeviceRgb(0, 0, 0); // Black color
+        try {
+            // Initialize PDF writer and document
+            PdfWriter writer = new PdfWriter(dest);
+            PdfDocument pdf = new PdfDocument(writer);
+            Document document = new Document(pdf);
+
+            // Create a table with 2 columns
+            Table table = new Table(UnitValue.createPercentArray(2)).useAllAvailableWidth();
+
+            // Add header
+            Cell headerCell = new Cell(1, 2)
+                    .add(new Paragraph("AIDS Institute Safety Net 340B Payment Voucher"))
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setBold();
+                  //  .setBackgroundColor(ColorConstants.LIGHT_GRAY);
+            table.addHeaderCell(headerCell);
+
+            // Add key-value pairs to the table
+            for (Map.Entry<String, String> entry : data.entrySet()) {
+                // Add key cell
+                Cell keyCell = new Cell()
+                        .add(new Paragraph(entry.getKey()))
+                        .setBold()
+                        .setBorder(new SolidBorder(borderColor, 2));
+                table.addCell(keyCell);
+
+                // Add value cell
+                Cell valueCell = new Cell()
+                        .add(new Paragraph(entry.getValue()))
+                        .setBorder(new SolidBorder(borderColor, 2));
+                table.addCell(valueCell);
+            }
+
+            // Add the table to the document
+            document.add(table);
+
+            // Close the document
+            document.close();
+            
+            System.out.println("PDF created successfully!");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+		
+	}
+
+
 
 	private void processHtmlFile(String htmlFilePath, String pdfFile) {
 		String pdfFilePath = pdfFile + File.separator + FilenameUtils.removeExtension(new File(htmlFilePath).getName())
