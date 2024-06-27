@@ -12,4 +12,6 @@ public interface FileWriteService {
 	
 	public void migrateCsvToPdfFiles() throws Exception;
 
+	void migrateHtmlToPdfFiles() throws Exception;
+
 }
