@@ -434,7 +434,7 @@ public class Utility {
 
 					document.close();
 
-					logger.info("PDF created successfully! - " + pdfFile + " for csv file : "+file.getAbsolutePath());
+					logger.info("PDF created successfully! - " + pdfFile + " for csv filepath : "+file.getAbsolutePath());
 				}
 			}
 		} catch (Exception e) {
