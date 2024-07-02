@@ -115,6 +115,9 @@ public class FileWriteServiceImpl implements FileWriteService {
 	@Value("${archive.download.sftp.processed.file.path}")
 	private String archiveProcessedDownloadDirectory;
 
+	@Value("${html.file.path}")
+	private String htmlFilePath;
+	
 	@Value("${csv.file.path}")
 	private String csvFilePath;
 
@@ -519,11 +522,12 @@ public class FileWriteServiceImpl implements FileWriteService {
 					
 					if (isJobResume) {
 						try {
-							migrateCsvToPdfFiles();
+							//migrateCsvToPdfFiles();
+							migrateHtmlToPdfFiles();
 						}catch(Exception e) {
 							logger.error("Error occured during migaretCsvToPdfFiles due to :: "+Utility.getStackTrace(e));
 							emailUtility.sendEmail(
-									"JOB 4 : migrateCsvToPdfFiles is failed due to  "+Utility.getStackTrace(e),
+									"JOB 4 : migrateHtmlToPdfFiles is failed due to  "+Utility.getStackTrace(e),
 									Constants.FAILED);
 						}
 					} else {
@@ -562,6 +566,12 @@ public class FileWriteServiceImpl implements FileWriteService {
 	public void migrateCsvToPdfFiles() throws Exception {
 
 		utility.migaretCsvToPdfFiles(csvFilePath, pdfFilePath);
+	}
+	
+	@Override
+	public void migrateHtmlToPdfFiles() throws Exception {
+
+		utility.migrateHtmlToPdfFiles(htmlFilePath, pdfFilePath);
 	}
 	
 	public int callStoredProcedure(String storedProcedureName) {

@@ -1,8 +1,11 @@
 package com.example.utility;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -46,6 +49,7 @@ import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import com.jcraft.jsch.SftpException;
+import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
 
 @Component
 public class Utility {
@@ -409,6 +413,49 @@ public class Utility {
 			}
 		} catch (Exception e) {
 			logger.error("Error occured during migaretCsvToPdfFiles due to :: "+getStackTrace(e));
+			throw e;
+		}
+	}
+	
+	public void migrateHtmlToPdfFiles(String htmlFilePath, String pdfDirectoryPath) throws Exception {
+		try {
+			List<Path> filePaths = listFiles(htmlFilePath);
+			for (Path filePath : filePaths) {
+				File file = filePath.toFile();
+				String pdfFilePath = pdfDirectoryPath + File.separator + FilenameUtils.removeExtension(new File(htmlFilePath).getName())
+				+ ".pdf";
+				BufferedReader reader = new BufferedReader(new FileReader(file.getAbsolutePath()));
+	            StringWriter writer = new StringWriter();
+	            String line;
+	            while ((line = reader.readLine()) != null) {
+	                writer.write(line);
+	            }
+	            reader.close();
+	            String htmlContent = writer.toString().trim(); // Trim leading/trailing whitespace
+
+	            // Remove BOM if present
+	            if (htmlContent.startsWith("\uFEFF")) {
+	                htmlContent = htmlContent.substring(1);
+	            }
+
+	            // Ensure HTML content starts with the correct tag
+	            if (!htmlContent.startsWith("<html>")) {
+	                throw new IllegalArgumentException("Invalid HTML content");
+	            }
+
+	            // Create a FileOutputStream to write the PDF file
+	            try (FileOutputStream os = new FileOutputStream(pdfFilePath)) {
+	                // Create the PDF renderer
+	                PdfRendererBuilder builder = new PdfRendererBuilder();
+	                builder.withHtmlContent(htmlContent, new File(htmlFilePath).toURI().toString());
+	                builder.toStream(os);
+	                builder.run();
+	            }
+
+	            logger.info("PDF created successfully for html file - "+file.getAbsolutePath()+ " :: pdf path - "+pdfFilePath);
+			}
+		} catch (Exception e) {
+			logger.error("Error occured during migaretHtmlToPdfFiles due to :: "+getStackTrace(e));
 			throw e;
 		}
 	}
