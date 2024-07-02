@@ -17,6 +17,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -34,6 +35,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.example.service.StdClaimService;
+import com.itextpdf.kernel.colors.Color;
 import com.itextpdf.kernel.colors.DeviceRgb;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
@@ -43,6 +45,7 @@ import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
 import com.itextpdf.layout.property.TextAlignment;
+import com.itextpdf.layout.property.UnitValue;
 import com.itextpdf.layout.property.VerticalAlignment;
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSch;
@@ -53,7 +56,7 @@ import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
 
 @Component
 public class Utility {
-	
+
 	static final Logger logger = LoggerFactory.getLogger(Utility.class);
 
 	@Autowired
@@ -68,13 +71,13 @@ public class Utility {
 		try {
 			// Encrypt the file
 			PublicKeyEncryption.encryptFile(inputFilePath, outputFilePath, publicKeyPath);
-	
+
 			// Upload the encrypted file to SFTP server
-		
+
 			uploadFile(outputFilePath, host, port, username, password, passphrase, privateKeyPath, remoteDirectory);
 		} catch (Exception e) {
 			e.printStackTrace();
-			logger.error("Error occured during encryptAndUpload method due to : "+getStackTrace(e));
+			logger.error("Error occured during encryptAndUpload method due to : " + getStackTrace(e));
 			throw e;
 		}
 	}
@@ -109,20 +112,21 @@ public class Utility {
 			channelSftp.disconnect();
 			session.disconnect();
 
-			logger.info("File uploaded successfully to path :: "+localFilePath);
+			logger.info("File uploaded successfully to path :: " + localFilePath);
 		} catch (Exception e) {
 			e.printStackTrace();
-			logger.error("Error occured during upload file to sftp due to : "+getStackTrace(e));
+			logger.error("Error occured during upload file to sftp due to : " + getStackTrace(e));
 		}
 	}
 
 	public void moveFileToSFTP(String inputFilePath, String outputFilePath, String publicKeyPath, String passphrase,
-			String host, int port, String username, String password, String privateKeyPath, String remoteDirectory) throws Exception {
+			String host, int port, String username, String password, String privateKeyPath, String remoteDirectory)
+			throws Exception {
 		try {
 			encryptAndUpload(inputFilePath, outputFilePath, publicKeyPath, passphrase, host, port, username, password,
 					privateKeyPath, remoteDirectory);
 		} catch (Exception e) {
-			logger.error("Error occured during movingFileToSFTP method due to : "+getStackTrace(e));
+			logger.error("Error occured during movingFileToSFTP method due to : " + getStackTrace(e));
 			throw e;
 		}
 	}
@@ -136,16 +140,16 @@ public class Utility {
 			String filePattern) throws Exception {
 		int count = 0;
 		try {
-			count = downloadFiles(host, port, username, password, passphrase, privateKeyPath, downloadFilePath, remoteDirectory,
-					filePattern);
-			if(count > 0) {
+			count = downloadFiles(host, port, username, password, passphrase, privateKeyPath, downloadFilePath,
+					remoteDirectory, filePattern);
+			if (count > 0) {
 				decryptFile(passphrase, privateKeyPath, downloadFilePath, decryptFilePath, isProcessVoucherDetails);
 				archiveSftpFiles(host, port, username, password, passphrase, privateKeyPath, downloadFilePath,
 						remoteDirectory, sftpRemoteArchiveDirectory, filePattern);
 				archiveFiles(downloadFilePath, archiveDownloadDirectory);
 			}
 		} catch (Exception e) {
-			logger.error("Error occured during downloadFilesFromSftpAndDecrypt method due to : "+getStackTrace(e));
+			logger.error("Error occured during downloadFilesFromSftpAndDecrypt method due to : " + getStackTrace(e));
 			throw e;
 		}
 		return count;
@@ -168,12 +172,15 @@ public class Utility {
 						Files.move(file, targetPath, StandardCopyOption.REPLACE_EXISTING);
 					}
 				} catch (Exception e) {
-					logger.error("Error occurred in method archiveFiles , Failed to move file: " + file.getFileName() + " due to :: " + getStackTrace(e));
+					logger.error("Error occurred in method archiveFiles , Failed to move file: " + file.getFileName()
+							+ " due to :: " + getStackTrace(e));
 				}
 			});
 			logger.error("All files archive successfully in method archiveFiles.");
 		} catch (Exception e) {
-			logger.error("Error occurred in method archiveFiles , Failed to list files in the source directory: due to :: " + getStackTrace(e));
+			logger.error(
+					"Error occurred in method archiveFiles , Failed to list files in the source directory: due to :: "
+							+ getStackTrace(e));
 			throw e;
 		}
 	}
@@ -214,7 +221,8 @@ public class Utility {
 
 							// Move the file
 							channelSftp.rename(sourceFilePath, destinationFilePath);
-							logger.info("Archive SFTP Files - Moved file: " + sourceFilePath + " to " + destinationFilePath);
+							logger.info("Archive SFTP Files - Moved file: " + sourceFilePath + " to "
+									+ destinationFilePath);
 						}
 					} else {
 						String sourceFilePath = remoteDirectory + "/" + fileName;
@@ -222,14 +230,16 @@ public class Utility {
 
 						// Move the file
 						channelSftp.rename(sourceFilePath, destinationFilePath);
-						logger.info("Archive SFTP Files - Moved file: " + sourceFilePath + " to " + destinationFilePath);
+						logger.info(
+								"Archive SFTP Files - Moved file: " + sourceFilePath + " to " + destinationFilePath);
 					}
 				}
 			}
 
 		} catch (Exception e) {
 			e.printStackTrace();
-			logger.error("Error occured in archiveSftpFiles method, during moving sfto files to archive due to :: "+getStackTrace(e));
+			logger.error("Error occured in archiveSftpFiles method, during moving sfto files to archive due to :: "
+					+ getStackTrace(e));
 			throw e;
 		} finally {
 			if (channelSftp != null) {
@@ -254,13 +264,14 @@ public class Utility {
 
 		} catch (Exception e) {
 			e.printStackTrace();
-			logger.error("Error occurred in decryptFile method, during decryptFile due to :: "+getStackTrace(e));
+			logger.error("Error occurred in decryptFile method, during decryptFile due to :: " + getStackTrace(e));
 			throw e;
 		}
 	}
 
 	private static int downloadFiles(String host, int port, String username, String password, String passphrase,
-			String privateKeyPath, String downloadFilePath, String remoteDirectory, String filePattern) throws Exception {
+			String privateKeyPath, String downloadFilePath, String remoteDirectory, String filePattern)
+			throws Exception {
 		int count = 0;
 		try {
 			JSch jsch = new JSch();
@@ -301,7 +312,7 @@ public class Utility {
 			session.disconnect();
 		} catch (Exception e) {
 			e.printStackTrace();
-			logger.error("Error occured in downloadFiles method , during download files :: "+getStackTrace(e));
+			logger.error("Error occured in downloadFiles method , during download files :: " + getStackTrace(e));
 			throw e;
 		}
 		logger.info("All files downloaded successfully.");
@@ -342,16 +353,17 @@ public class Utility {
 				}
 
 				scanner.close();
-				
+
 				logger.info("Voucher Details Map : " + voucherDetailsAndStatusMap);
 
 				stdClaimService.updateVoucherDetailsAndStatus(voucherDetailsAndStatusMap);
 
 			} catch (Exception e) {
-				logger.error("Error occured during parseFilesAndSaveVoucherDetails for file " + outputFilePath + " :: Error is :: "+getStackTrace(e));
+				logger.error("Error occured during parseFilesAndSaveVoucherDetails for file " + outputFilePath
+						+ " :: Error is :: " + getStackTrace(e));
 				throw e;
 			}
-			
+
 		}
 	}
 
@@ -376,9 +388,10 @@ public class Utility {
 		try {
 			List<Path> filePaths = listFiles(csvFilePath);
 			for (Path filePath : filePaths) {
+				Map<String, String> data = new LinkedHashMap<>();
 				File file = filePath.toFile();
-				PdfWriter writer = new PdfWriter(
-						pdfFilePath + File.separator + FilenameUtils.removeExtension(file.getName()) + ".pdf");
+				String pdfFile = pdfFilePath + File.separator + FilenameUtils.removeExtension(file.getName()) + ".pdf";
+				PdfWriter writer = new PdfWriter(pdfFile);
 
 				PdfDocument pdfDoc = new PdfDocument(writer);
 
@@ -389,73 +402,87 @@ public class Utility {
 
 				if (!lines.isEmpty()) {
 					String[] headers = lines.get(0).split(",");
-					Table table = new Table(headers.length);
-
-					for (String header : headers) {
-						Cell headerCell = new Cell().add(new Paragraph(header).setBold())
-								.setBackgroundColor(new DeviceRgb(221, 221, 221)) // light grey background
-								.setTextAlignment(TextAlignment.CENTER).setVerticalAlignment(VerticalAlignment.MIDDLE)
-								.setBorder(new SolidBorder(1));
-						table.addHeaderCell(headerCell);
-					}
 
 					for (int i = 1; i < lines.size(); i++) {
-						String[] values = lines.get(i).split(",");
-						for (String value : values) {
-							table.addCell(new Cell().add(new Paragraph(value)));
+						String[] values = lines.get(i).split(":");
+						if (values.length > 1) {
+							data.put(values[0], values[1]);
+						} else {
+							// data.put(values[0], "");
 						}
 					}
 
-					document.add(table);
-				}
+					Color borderColor = new DeviceRgb(0, 0, 0); // Black color
 
-				document.close();
+					Table table = new Table(UnitValue.createPercentArray(2)).useAllAvailableWidth();
+
+					Cell headerCell = new Cell(1, 2).add(new Paragraph(headers[0]))
+							.setTextAlignment(TextAlignment.CENTER).setBold();
+					table.addHeaderCell(headerCell);
+
+					for (Map.Entry<String, String> entry : data.entrySet()) {
+						Cell keyCell = new Cell().add(new Paragraph(entry.getKey())).setBold()
+								.setBorder(new SolidBorder(borderColor, 2));
+						table.addCell(keyCell);
+
+						Cell valueCell = new Cell().add(new Paragraph(entry.getValue()))
+								.setBorder(new SolidBorder(borderColor, 2));
+						table.addCell(valueCell);
+					}
+
+					document.add(table);
+
+					document.close();
+
+					logger.info("PDF created successfully! - " + pdfFile);
+				}
 			}
 		} catch (Exception e) {
-			logger.error("Error occured during migaretCsvToPdfFiles due to :: "+getStackTrace(e));
+			logger.error("Error occured during migaretCsvToPdfFiles due to :: " + getStackTrace(e));
 			throw e;
 		}
 	}
-	
+
 	public void migrateHtmlToPdfFiles(String htmlFilePath, String pdfDirectoryPath) throws Exception {
 		try {
 			List<Path> filePaths = listFiles(htmlFilePath);
 			for (Path filePath : filePaths) {
 				File file = filePath.toFile();
-				String pdfFilePath = pdfDirectoryPath + File.separator + FilenameUtils.removeExtension(new File(htmlFilePath).getName())
-				+ ".pdf";
+				String pdfFilePath = pdfDirectoryPath + File.separator
+						+ FilenameUtils.removeExtension(new File(htmlFilePath).getName()) + ".pdf";
 				BufferedReader reader = new BufferedReader(new FileReader(file.getAbsolutePath()));
-	            StringWriter writer = new StringWriter();
-	            String line;
-	            while ((line = reader.readLine()) != null) {
-	                writer.write(line);
-	            }
-	            reader.close();
-	            String htmlContent = writer.toString().trim(); // Trim leading/trailing whitespace
+				StringWriter writer = new StringWriter();
+				String line;
+				while ((line = reader.readLine()) != null) {
+					writer.write(line);
+				}
+				reader.close();
+				String htmlContent = writer.toString().trim(); // Trim leading/trailing whitespace
 
-	            // Remove BOM if present
-	            if (htmlContent.startsWith("\uFEFF")) {
-	                htmlContent = htmlContent.substring(1);
-	            }
+				// Remove BOM if present
+				if (htmlContent.startsWith("\uFEFF")) {
+					htmlContent = htmlContent.substring(1);
+				}
 
-	            // Ensure HTML content starts with the correct tag
-	            if (!htmlContent.startsWith("<html>")) {
-	                throw new IllegalArgumentException("Invalid HTML content");
-	            }
+				// Ensure HTML content starts with the correct tag
+				if (!htmlContent.startsWith("<html>")) {
+					throw new IllegalArgumentException("Invalid HTML content");
+				}
 
-	            // Create a FileOutputStream to write the PDF file
-	            try (FileOutputStream os = new FileOutputStream(pdfFilePath)) {
-	                // Create the PDF renderer
-	                PdfRendererBuilder builder = new PdfRendererBuilder();
-	                builder.withHtmlContent(htmlContent, new File(htmlFilePath).toURI().toString());
-	                builder.toStream(os);
-	                builder.run();
-	            }
+				// Create a FileOutputStream to write the PDF file
+				try (FileOutputStream os = new FileOutputStream(pdfFilePath)) {
+					// Create the PDF renderer
+					PdfRendererBuilder builder = new PdfRendererBuilder();
+					builder.withHtmlContent(htmlContent, new File(htmlFilePath).toURI().toString());
+					builder.toStream(os);
+					builder.run();
+				}
 
-	            logger.info("PDF created successfully for html file - "+file.getAbsolutePath()+ " :: pdf path - "+pdfFilePath);
+				logger.info("PDF created successfully for html file - " + file.getAbsolutePath() + " :: pdf path - "
+						+ pdfFilePath);
 			}
 		} catch (Exception e) {
-			logger.error("Error occured during migaretHtmlToPdfFiles due to :: "+getStackTrace(e));
+			logger.error("Error occured during migaretHtmlToPdfFiles due to :: " + getStackTrace(e));
 			throw e;
 		}
 	}
