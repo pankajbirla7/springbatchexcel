@@ -417,6 +417,7 @@ public class Utility {
 					Table table = new Table(UnitValue.createPercentArray(2)).useAllAvailableWidth();
 
 					Cell headerCell = new Cell(1, 2).add(new Paragraph(headers[0]))
+							.setBackgroundColor(new DeviceRgb(221, 221, 221))
 							.setTextAlignment(TextAlignment.CENTER).setBold();
 					table.addHeaderCell(headerCell);
 
