@@ -522,8 +522,8 @@ public class FileWriteServiceImpl implements FileWriteService {
 					
 					if (isJobResume) {
 						try {
-							//migrateCsvToPdfFiles();
-							migrateHtmlToPdfFiles();
+							migrateCsvToPdfFiles();
+							//migrateHtmlToPdfFiles();
 						}catch(Exception e) {
 							logger.error("Error occured during migaretCsvToPdfFiles due to :: "+Utility.getStackTrace(e));
 							emailUtility.sendEmail(
