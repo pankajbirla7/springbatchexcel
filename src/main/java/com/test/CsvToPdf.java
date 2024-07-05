@@ -35,19 +35,106 @@ import com.itextpdf.layout.property.VerticalAlignment;
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
 
 public class CsvToPdf {
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 		String csvFile = "D:\\Projects\\Ronak\\csvfiles\\";
 		String pdfFile = "D:\\Projects\\Ronak\\pdffiles\\";
 
 		CsvToPdf csvToPdf = new CsvToPdf();
+		csvToPdf.migaretCsvToPdfFiles1(csvFile, pdfFile);
 		// csvToPdf.migaretCsvToPdfFiles(csvFile, pdfFile);
 
 //		String htmlFilePath = "D:\\Projects\\Ronak\\htmlfiles\\myhtml.html";
 //		csvToPdf.processHtmlFile(htmlFilePath, pdfFile);
 //		csvToPdf.createPdfFileManually(pdfFile);
 
-		csvToPdf.createPdfFileByDynamicData(csvFile, pdfFile);
+	//	csvToPdf.createPdfFileByDynamicData(csvFile, pdfFile);
 	}
+	
+	public void migaretCsvToPdfFiles1(String csvFilePath, String pdfFilePath) throws Exception {
+		try {
+			List<Path> filePaths = listFiles(csvFilePath);
+			for (Path filePath : filePaths) {
+				Map<String, String> data = new LinkedHashMap<>();
+				File file = filePath.toFile();
+				String[] csvFileNameArr = file.getName().split("_");
+				String feinNumber = csvFileNameArr[0];
+				String pdfFile = searchAndCreateFile(pdfFilePath, feinNumber, FilenameUtils.removeExtension(file.getName()) + ".pdf");
+				//String pdfFile = pdfFilePath + File.separator + FilenameUtils.removeExtension(file.getName()) + ".pdf";
+				if(pdfFile == null) {
+					//logger.info("Folder name with fein number not found to create pdf file from csv :: "+file.getAbsolutePath()+ " :: and fein number from csv file :: "+feinNumber);
+					break;
+				}
+				PdfWriter writer = new PdfWriter(pdfFile);
+
+				PdfDocument pdfDoc = new PdfDocument(writer);
+
+				Document document = new Document(pdfDoc);
+
+				Path path = Paths.get(file.getAbsolutePath());
+				List<String> lines = Files.readAllLines(path);
+
+				if (!lines.isEmpty()) {
+					String[] headers = lines.get(0).split(",");
+
+					for (int i = 1; i < lines.size(); i++) {
+						String[] values = lines.get(i).split(":");
+						if (values.length > 1) {
+							data.put(values[0], values[1]);
+						} else {
+							// data.put(values[0], "");
+						}
+					}
+
+					Color borderColor = new DeviceRgb(0, 0, 0); // Black color
+
+					Table table = new Table(UnitValue.createPercentArray(2)).useAllAvailableWidth();
+
+					Cell headerCell = new Cell(1, 2).add(new Paragraph(headers[0]))
+							.setBackgroundColor(new DeviceRgb(221, 221, 221))
+							.setTextAlignment(TextAlignment.CENTER).setBold();
+					table.addHeaderCell(headerCell);
+
+					for (Map.Entry<String, String> entry : data.entrySet()) {
+						Cell keyCell = new Cell().add(new Paragraph(entry.getKey())).setBold()
+								.setBorder(new SolidBorder(borderColor, 2));
+						table.addCell(keyCell);
+
+						Cell valueCell = new Cell().add(new Paragraph(entry.getValue()))
+								.setBorder(new SolidBorder(borderColor, 2));
+						table.addCell(valueCell);
+					}
+
+					document.add(table);
+
+					document.close();
+
+				//	logger.info("PDF created successfully! - " + pdfFile + " for csv filepath : "+file.getAbsolutePath());
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw e;
+		}
+	}
+	
+	public static String searchAndCreateFile(String rootDirectoryPath, String folderNameToFind, String fileNameToCreate) {
+        File rootDirectory = new File(rootDirectoryPath);
+
+        if (rootDirectory.exists() && rootDirectory.isDirectory()) {
+            File[] subDirectories = rootDirectory.listFiles(File::isDirectory);
+
+            if (subDirectories != null) {
+                for (File folder : subDirectories) {
+                    if (folder.getName().contains(folderNameToFind)) {
+                        File newFile = new File(folder, fileNameToCreate);
+                        return newFile.getAbsolutePath();
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
 
 	private void createPdfFileByDynamicData(String csvFilePath, String pdfFilePath) {
 		try {

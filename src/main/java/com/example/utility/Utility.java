@@ -390,7 +390,14 @@ public class Utility {
 			for (Path filePath : filePaths) {
 				Map<String, String> data = new LinkedHashMap<>();
 				File file = filePath.toFile();
-				String pdfFile = pdfFilePath + File.separator + FilenameUtils.removeExtension(file.getName()) + ".pdf";
+				String[] csvFileNameArr = file.getName().split("_");
+				String feinNumber = csvFileNameArr[0];
+				String pdfFile = searchAndCreateFile(pdfFilePath, feinNumber, FilenameUtils.removeExtension(file.getName()) + ".pdf");
+				//String pdfFile = pdfFilePath + File.separator + FilenameUtils.removeExtension(file.getName()) + ".pdf";
+				if(pdfFile == null) {
+					logger.info("Folder name with fein number not found to create pdf file from csv :: "+file.getAbsolutePath()+ " :: and fein number from csv file :: "+feinNumber);
+					break;
+				}
 				PdfWriter writer = new PdfWriter(pdfFile);
 
 				PdfDocument pdfDoc = new PdfDocument(writer);
@@ -443,6 +450,25 @@ public class Utility {
 			throw e;
 		}
 	}
+	
+	public static String searchAndCreateFile(String rootDirectoryPath, String folderNameToFind, String fileNameToCreate) {
+        File rootDirectory = new File(rootDirectoryPath);
+
+        if (rootDirectory.exists() && rootDirectory.isDirectory()) {
+            File[] subDirectories = rootDirectory.listFiles(File::isDirectory);
+
+            if (subDirectories != null) {
+                for (File folder : subDirectories) {
+                    if (folder.getName().contains(folderNameToFind)) {
+                        File newFile = new File(folder, fileNameToCreate);
+                        return newFile.getAbsolutePath();
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
 
 	public void migrateHtmlToPdfFiles(String htmlFilePath, String pdfDirectoryPath) throws Exception {
 		try {
