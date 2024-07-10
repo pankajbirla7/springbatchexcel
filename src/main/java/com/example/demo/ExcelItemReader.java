@@ -63,6 +63,9 @@ public class ExcelItemReader implements ItemReader {
 
 	@Value("${output.file.path}")
 	private String outputFileDirectory;
+	
+	@Value("${miscellaneous.output.file.path}")
+	private String miscellaneousOutputFileDirectory;
 
 	@Value("${mssql.storeprocedure.name}")
 	private String storedProcedureName;
@@ -369,7 +372,14 @@ public class ExcelItemReader implements ItemReader {
 							+ resource.getFile().getAbsolutePath(), Constants.SUCCESSS);
 				} else {
 					emailUtility.sendEmail("Agency Name not found for the fein :" + items.get(0).getFein()
-							+ " and failed for file - " + resource.getFile().getAbsolutePath(), Constants.FAILED);
+							+ " and for file - " + resource.getFile().getAbsolutePath(), Constants.SUCCESSS);
+					Chunk<MyDataObject> fileWriterChunk = new Chunk<>(items);
+					itemWriter.write(fileWriterChunk);
+
+					moveFilesToArchiveFolder(items.get(0).getFein(), resource, agencyName);
+
+					emailUtility.sendEmail("JOB 1 : File processing and records success for file - "
+							+ resource.getFile().getAbsolutePath(), Constants.SUCCESSS);
 				}
 			} catch (Exception e) {
 				emailUtility.sendEmail(
@@ -408,39 +418,41 @@ public class ExcelItemReader implements ItemReader {
 	}
 
 	private void moveFilesToArchiveFolder(String fin, Resource resource, String agencyName) {
-
-		logger.info("Agency name : " + agencyName + " - for the fein number : " + fin);
+		String destinationFilePath = null;
 		if (agencyName != null) {
-			try {
-				// Get the file path from the resource object
-				Path source = Paths.get(resource.getFile().getAbsolutePath());
-
-				// Define destination folder path
-				Path destinationFolder = Paths.get(outputFileDirectory + "\\" + agencyName + " - " + fin);
-
-				if (!Files.exists(destinationFolder)) {
-					Files.createDirectories(destinationFolder);
-				}
-
-				// Define destination file path
-				Path destination = destinationFolder.resolve(source.getFileName());
-
-				// Move the file
-				Files.move(source, destination, StandardCopyOption.REPLACE_EXISTING);
-
-				logger.info("File moved successfully from " + source + " to " + destination);
-			} catch (Exception e) {
-				logger.error("Error moving the file due to :: " + Utility.getStackTrace(e));
-				try {
-					emailUtility.sendEmail("File moving to archive folder got failed for file - "
-							+ resource.getFile().getAbsolutePath(), Constants.FAILED);
-				} catch (Exception ex) {
-					logger.error("Error occured while moving files to archive folder inside catch due to : "
-							+ Utility.getStackTrace(ex));
-				}
-			}
+			logger.info("Agency name : " + agencyName + " - for the fein number : " + fin);
+			destinationFilePath = outputFileDirectory + "\\" + agencyName + " - " + fin;
 		} else {
 			logger.info("Agency Name Not found for fein number :: " + fin);
+			destinationFilePath = miscellaneousOutputFileDirectory;
+		}
+		try {
+			// Get the file path from the resource object
+			Path source = Paths.get(resource.getFile().getAbsolutePath());
+
+			// Define destination folder path
+			Path destinationFolder = Paths.get(destinationFilePath);
+
+			if (!Files.exists(destinationFolder)) {
+				Files.createDirectories(destinationFolder);
+			}
+
+			// Define destination file path
+			Path destination = destinationFolder.resolve(source.getFileName());
+
+			// Move the file
+			Files.move(source, destination, StandardCopyOption.REPLACE_EXISTING);
+
+			logger.info("File moved successfully from " + source.toFile().getAbsolutePath() + " to " + destination.toFile().getAbsolutePath());
+		} catch (Exception e) {
+			logger.error("Error moving the file due to :: " + Utility.getStackTrace(e));
+			try {
+				emailUtility.sendEmail("File moving to archive folder got failed for file - "
+						+ resource.getFile().getAbsolutePath(), Constants.FAILED);
+			} catch (Exception ex) {
+				logger.error("Error occured while moving files to archive folder inside catch due to : "
+						+ Utility.getStackTrace(ex));
+			}
 		}
 	}
 
@@ -450,7 +462,7 @@ public class ExcelItemReader implements ItemReader {
 			return jdbcTemplate.queryForObject(sql, new Object[] { Integer.parseInt(fin) },
 					(rs, rowNum) -> new String(rs.getString("Agency Name")));
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("Error occurred during getAgencyName() due to :: " + Utility.getStackTrace(e));
 		}
 
 		return null;
@@ -461,7 +473,7 @@ public class ExcelItemReader implements ItemReader {
 			String sql = "SELECT * from raw_status where Description = ?";
 			return jdbcTemplate.queryForObject(sql, new Object[] { status }, (rs, rowNum) -> rs.getInt("Code"));
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("Error occurred during getRawStatusCodeByStatus() due to :: " + Utility.getStackTrace(e));
 		}
 
 		return 0;
