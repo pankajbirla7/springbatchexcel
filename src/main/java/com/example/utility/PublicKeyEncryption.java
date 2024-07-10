@@ -153,7 +153,7 @@ public class PublicKeyEncryption {
 			int exitCode = process.waitFor();
 			logger.info("Process exited with code: " + exitCode);
 
-		} catch (IOException | InterruptedException e) {
+		} catch (Exception e) {
 			logger.error("File decryption error for encrypted file. " + encryptedFilePath+" :: error occured due to :: "+Utility.getStackTrace(e));
 			e.printStackTrace();
 			return false;
