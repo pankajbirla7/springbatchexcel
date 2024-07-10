@@ -10,6 +10,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -464,7 +470,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 				@Override
 				protected void doInTransactionWithoutResult(TransactionStatus status) {
 					try {
-						spResponses[0] = callStoredProcedure(loadM171Sp);
+						spResponses[0] = callStoredProcedureUsingTimeLimit(loadM171Sp);
 						logger.info("Executing Stored procedure :"+loadM171Sp+" :: And Resposne is : " + spResponse + " :: Completed at time : "
 								+ System.currentTimeMillis());
 					} catch (Exception e) {
@@ -485,7 +491,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 					@Override
 					protected void doInTransactionWithoutResult(TransactionStatus status) {
 						try {
-							spResponses[0] = callStoredProcedure(loadPaymentSummarySp);
+							spResponses[0] = callStoredProcedureUsingTimeLimit(loadPaymentSummarySp);
 							logger.info("Executing Stored procedure :"+loadPaymentSummarySp+" :: And Resposne is : " + spResponse + " :: Completed at time : "
 									+ System.currentTimeMillis());
 						} catch (Exception e) {
@@ -505,7 +511,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 						@Override
 						protected void doInTransactionWithoutResult(TransactionStatus status) {
 							try {
-								spResponses[0] = callStoredProcedure(generateVoucherSummarySp);
+								spResponses[0] = callStoredProcedureUsingTimeLimit(generateVoucherSummarySp);
 								logger.info("Executing Stored procedure :"+generateVoucherSummarySp+" :: And Resposne is : " + spResponse + " :: Completed at time : "
 										+ System.currentTimeMillis());
 							} catch (Exception e) {
@@ -588,6 +594,32 @@ public class FileWriteServiceImpl implements FileWriteService {
 			return 1;
 		}
 	}
+	
+	public int callStoredProcedureUsingTimeLimit(String storedProcedureName) {
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        
+        Callable<Integer> task = () -> callStoredProcedure(storedProcedureName);
+        
+        Future<Integer> future = executor.submit(task);
+        
+        try {
+            // Set the timeout to 5 minutes (300 seconds)
+            Integer resultSet = future.get(300, TimeUnit.SECONDS);
+            return resultSet;
+        } catch (TimeoutException e) {
+        	logger.error("Stored procedure call timed out. Moving forward with other logic, for storedprocedure name :: "+storedProcedureName+" :: Exception occured due to :: "+Utility.getStackTrace(e));
+            // Move forward with other logic
+        } catch (Exception e) {
+        	logger.error("Exception occurred while calling stored procedure "+storedProcedureName+" - due to :: "+Utility.getStackTrace(e));
+        } finally {
+            executor.shutdown();
+        }
+        return 1;
+	}
+	
+	
+	
+	
 
 
 }
