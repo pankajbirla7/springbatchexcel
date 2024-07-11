@@ -6,4 +6,6 @@ public interface FileDao {
 
 	FileDetails getFileDetailsByFileID(int fileid);
 
+	FileDetails getFileDetailsByFeinNumber(String feinNumber);
+
 }
