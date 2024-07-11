@@ -407,8 +407,7 @@ public class ExcelItemReader implements ItemReader {
 		fileDetails.setAgencyFein(fein);
 		fileDetails.setFileName(resource.getFilename());
 		fileDetails.setSubmittedByEmail("abc@gmail.com");
-		java.sql.Date d = java.sql.Date.valueOf("2024-03-26");
-		fileDetails.setSubmitDate(d);
+		
 		fileDetailsList.add(fileDetails);
 
 		Chunk<FileDetails> fileDetailsChunk = new Chunk<>(fileDetailsList);
