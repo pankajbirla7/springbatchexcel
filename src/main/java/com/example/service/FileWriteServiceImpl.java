@@ -146,11 +146,11 @@ public class FileWriteServiceImpl implements FileWriteService {
 			if (stdClaims != null && stdClaims.size() > 0) {
 				for (StdClaim stdClaim : stdClaims) {
 					FileDetails fileDetails = fileDao.getFileDetailsByFileID(stdClaim.getFileid());
-					int claimCount = stdClaimDao.getClaimCountByDateEntered(fileDetails.getSubmitDate(), Constants.NEW);
+					int claimCount = stdClaimDao.getClaimCountByDateEntered(fileDetails.getRawLoadDate(), Constants.NEW);
 					logger.info("Total Cliam count for stadClaim date value greater than : " + " for file Id : "
 							+ stdClaim.getFileid());
 
-					List<StdClaim> stdClaims2 = stdClaimDao.getClaimIds(fileDetails.getSubmitDate(), Constants.NEW);
+					List<StdClaim> stdClaims2 = stdClaimDao.getClaimIds(fileDetails.getRawLoadDate(), Constants.NEW);
 					String filePath = writeFirstClaimCountRowInFile(claimCount, stdClaim, stdClaims2, fileDetails);
 
 					logger.info("While generating and encrypting file process the filepath is : " + filePath);
@@ -380,7 +380,7 @@ public class FileWriteServiceImpl implements FileWriteService {
 	private VohDetails getVohRecordDetails(int currClaimId) {
 		String sql = "SELECT DISTINCT REPLACE(CONVERT(varchar, GETDATE(), 101), '/', '') AS acctDate , \r\n"
 				+ "c.InvoiceNo, \r\n" + "ISNULL(Rate,0) as claimTotal, \r\n" + "c.NDC, \r\n" + "a.SFSVendorId, \r\n"
-				+ "REPLACE(CONVERT(varchar, f.SubmitDate, 101), '/', '') AS date_received, \r\n"
+				+ "REPLACE(CONVERT(varchar, f.RawLoadDate, 101), '/', '') AS date_received, \r\n"
 				+ "REPLACE(CONVERT(varchar, c.dfilled, 101), '/', '') AS dfilled, \r\n"
 				+ "(case when mv.payee_type in ('B','C','G','M') then 'N' else 'Y' end) as interest_eligible, \r\n"
 				+ "REPLACE(CONVERT(varchar, DATEADD(day, 2, GETDATE()), 101), '/', '') AS paymentDate \r\n"
