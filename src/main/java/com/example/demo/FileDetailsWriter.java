@@ -28,7 +28,7 @@ public class FileDetailsWriter {
 			for (FileDetails item : chunk.getItems()) {
 				if (item.getAgencyFein() != null) {
 					System.out.println("Writing item: " + item);
-					String sql = "INSERT INTO Files (AgencyFEIN, Filename, Submitted_By_Email, SubmitDate) VALUES (?, ?, ?, CURRENT_DATE())";
+					String sql = "INSERT INTO Files (AgencyFEIN, Filename, Submitted_By_Email, RawLoadDate) VALUES (?, ?, ?, CURRENT_DATE())";
 					// int i = jdbcTemplate.update(sql, Integer.parseInt(item.getAgencyFin()),
 					// item.getFileName(), item.getSubmittedByEmail());
 					KeyHolder keyHolder = new GeneratedKeyHolder();

@@ -27,8 +27,8 @@ public class FileDaoImpl implements FileDao {
 		for (Map<String, Object> row : rows) {
 			int id = (int) row.get("id");
 			int agencyFin = (int) row.get("AgencyFEIN");
-			Date submDate = (Date) row.get("SubmitDate");
-			fileDetails.setSubmitDate(submDate);
+			Date rawLoadDate = (Date) row.get("RawLoadDate");
+			fileDetails.setRawLoadDate(rawLoadDate);
 			fileDetails.setId(Long.valueOf(id));
 			fileDetails.setAgencyFein(String.valueOf(agencyFin));
 		}
