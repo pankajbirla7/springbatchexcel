@@ -324,6 +324,7 @@ public class Utility {
 			Map<String, String> voucherDetailsAndStatusMap = new HashMap<>();
 			try {
 				File file = new File(outputFilePath);
+				logger.info("File processing for voucehr details :: " + file.getAbsolutePath());
 				Scanner scanner = new Scanner(file);
 
 				// Skip the first two lines (header rows)
