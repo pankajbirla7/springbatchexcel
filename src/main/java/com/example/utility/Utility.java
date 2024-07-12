@@ -34,6 +34,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import com.example.demo.Constants;
+import com.example.demo.EmailUtility;
+import com.example.demo.FileDetails;
+import com.example.service.FileDao;
 import com.example.service.StdClaimService;
 import com.itextpdf.kernel.colors.Color;
 import com.itextpdf.kernel.colors.DeviceRgb;
@@ -61,6 +65,12 @@ public class Utility {
 
 	@Autowired
 	StdClaimService stdClaimService;
+	
+	@Autowired
+	FileDao fileDao;
+	
+	@Autowired
+	EmailUtility emailUtility;
 
 ///////////////////////////// Encrypt File and Upload File To SFTP server
 ///////////////////////////// ////////////////////////////
@@ -444,6 +454,7 @@ public class Utility {
 					document.close();
 
 					logger.info("PDF created successfully! - " + pdfFile + " for csv filepath : "+file.getAbsolutePath());
+					sendEmailForThePdfFIle(feinNumber, pdfFile);
 				}
 			}
 		} catch (Exception e) {
@@ -452,6 +463,15 @@ public class Utility {
 		}
 	}
 	
+	private void sendEmailForThePdfFIle(String feinNumber, String pdfFile) {
+		FileDetails fileDetails = fileDao.getFileDetailsByFeinNumber(feinNumber);
+		logger.info("Sending email for the pdf file created - " + pdfFile + " for the fein number :: "+feinNumber+" - sending to email id :: "+fileDetails.getSubmittedByEmail());
+		emailUtility.sendEmailWithAttcahment(
+				"JOB 2 : PDF file generated - "+pdfFile,
+				Constants.SUCCESSS, pdfFile);
+		
+	}
+
 	public static String searchAndCreateFile(String rootDirectoryPath, String folderNameToFind, String fileNameToCreate) {
         File rootDirectory = new File(rootDirectoryPath);
 
