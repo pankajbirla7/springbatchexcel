@@ -63,7 +63,7 @@ public class ExcelItemReader implements ItemReader {
 
 	@Value("${output.file.path}")
 	private String outputFileDirectory;
-	
+
 	@Value("${miscellaneous.output.file.path}")
 	private String miscellaneousOutputFileDirectory;
 
@@ -75,7 +75,7 @@ public class ExcelItemReader implements ItemReader {
 
 	@Autowired
 	FileWriteService fileWriteService;
-	
+
 	@Autowired
 	EmailUtility emailUtility;
 
@@ -139,11 +139,12 @@ public class ExcelItemReader implements ItemReader {
 				this.rowIterator = workbook.getSheetAt(0).iterator();
 				rowIterator.hasNext();
 				rowIterator.next();
+				StringBuffer processStatus = new StringBuffer();
 				transactionTemplate.execute(new TransactionCallbackWithoutResult() {
 					@Override
 					protected void doInTransactionWithoutResult(TransactionStatus status) {
 						try {
-							processFile(rowIterator, resource);
+							StringBuffer processStat = processFile(rowIterator, resource, processStatus);
 						} catch (Exception e) {
 							logger.error("JOB 1 : File processing job is failed due to " + Utility.getStackTrace(e));
 							emailUtility.sendEmail(
@@ -152,8 +153,11 @@ public class ExcelItemReader implements ItemReader {
 						}
 					}
 				});
-
+				
 				closeWorkbook();
+				if(processStatus.toString().equalsIgnoreCase(Constants.FAILED)) {
+					continue;
+				}
 			} catch (Exception e) {
 				logger.error("File processing failed for file " + resource.getFile().getAbsolutePath() + " due to :: "
 						+ Utility.getStackTrace(e));
@@ -163,7 +167,7 @@ public class ExcelItemReader implements ItemReader {
 				throw new RuntimeException("Error opening Excel file", e);
 			}
 		}
-
+		
 		logger.info("JOB1: Completed at time : " + System.currentTimeMillis());
 
 		try {
@@ -267,7 +271,7 @@ public class ExcelItemReader implements ItemReader {
 		}
 	}
 
-	private void processFile(Iterator<Row> rowIterator, Resource resource) throws Exception {
+	private StringBuffer processFile(Iterator<Row> rowIterator, Resource resource, StringBuffer processStatus) throws Exception {
 		List<MyDataObject> items = new ArrayList<>();
 		DataFormatter dataFormatter = new DataFormatter();
 		int fileId = 0;
@@ -350,6 +354,13 @@ public class ExcelItemReader implements ItemReader {
 				dataObject.setStatusCode(rowStatusMap.get("New"));
 				if (fileId == 0) {
 					fileId = insertFileDetail(resource, dataObject.getFein());
+					if(fileId == 0) {
+						processStatus.append(Constants.FAILED);
+						emailUtility.sendEmail(
+								"JOB 1 : File details entry got failed for the file - " + resource.getFile().getAbsolutePath(),
+								Constants.FAILED);
+						return processStatus;
+					}
 				}
 				dataObject.setFileId(fileId);
 
@@ -394,6 +405,8 @@ public class ExcelItemReader implements ItemReader {
 							+ resource.getFile().getAbsolutePath() + " at time " + System.currentTimeMillis(),
 					Constants.SUCCESSS);
 		}
+		
+		return processStatus.append(Constants.SUCCESSS);
 
 	}
 
@@ -401,17 +414,24 @@ public class ExcelItemReader implements ItemReader {
 		List<FileDetails> fileDetailsList = new ArrayList<>();
 		FileDetails fileDetails = new FileDetails();
 		String fein = agencyFein;
-		if (agencyFein.contains("-")) {
-			fein = agencyFein.split("-")[1];
-		}
-		fileDetails.setAgencyFein(fein);
-		fileDetails.setFileName(resource.getFilename());
-		fileDetails.setSubmittedByEmail("abc@gmail.com");
-		
-		fileDetailsList.add(fileDetails);
+		int fileId = 0;
+		try {
+			if (agencyFein.contains("-")) {
+				fein = agencyFein.split("-")[1];
+			}
+			fileDetails.setAgencyFein(fein);
+			fileDetails.setFileName(resource.getFilename());
+			fileDetails.setSubmittedByEmail("abc@gmail.com");
 
-		Chunk<FileDetails> fileDetailsChunk = new Chunk<>(fileDetailsList);
-		int fileId = fileDetailsWriter.write(fileDetailsChunk);
+			fileDetailsList.add(fileDetails);
+
+			Chunk<FileDetails> fileDetailsChunk = new Chunk<>(fileDetailsList);
+			fileId = fileDetailsWriter.write(fileDetailsChunk);
+		} catch (Exception e) {
+			logger.error("Error occured during inserting file details into file table for fein number :: " + agencyFein
+					+ " :: due to :: " + Utility.getStackTrace(e));
+			return 0;
+		}
 
 		return fileId;
 	}
@@ -442,12 +462,14 @@ public class ExcelItemReader implements ItemReader {
 			// Move the file
 			Files.move(source, destination, StandardCopyOption.REPLACE_EXISTING);
 
-			logger.info("File moved successfully from " + source.toFile().getAbsolutePath() + " to " + destination.toFile().getAbsolutePath());
+			logger.info("File moved successfully from " + source.toFile().getAbsolutePath() + " to "
+					+ destination.toFile().getAbsolutePath());
 		} catch (Exception e) {
 			logger.error("Error moving the file due to :: " + Utility.getStackTrace(e));
 			try {
-				emailUtility.sendEmail("File moving to archive folder got failed for file - "
-						+ resource.getFile().getAbsolutePath(), Constants.FAILED);
+				emailUtility.sendEmail(
+						"File moving to archive folder got failed for file - " + resource.getFile().getAbsolutePath(),
+						Constants.FAILED);
 			} catch (Exception ex) {
 				logger.error("Error occured while moving files to archive folder inside catch due to : "
 						+ Utility.getStackTrace(ex));
